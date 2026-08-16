@@ -1,0 +1,4 @@
+pzctl.json
+pzctl-data/
+__pycache__/
+*.pyc

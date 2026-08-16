@@ -1,0 +1,42 @@
+{
+  "server_name": "servertest",
+  "zomboid_dir": "C:\\Users\\<you>\\Zomboid",
+  "cache_dir": "",
+  "admin_username": "admin",
+  "admin_password": "",
+  "steam": true,
+  "java": {
+    "xms": "4g",
+    "xmx": "4g",
+    "gc": "-XX:+UseZGC",
+    "extra_args": []
+  },
+  "http": {
+    "host": "127.0.0.1",
+    "port": 8077,
+    "token": ""
+  },
+  "supervisor": {
+    "autostart": false,
+    "auto_restart": true,
+    "max_restarts": 5,
+    "restart_window_sec": 900,
+    "backoff_sec": [5, 15, 30, 60, 120],
+    "stop_timeout_sec": 90
+  },
+  "rcon": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 27015,
+    "password": ""
+  },
+  "schedule": {
+    "restarts": [],
+    "backups": []
+  },
+  "backup": {
+    "dir": "C:\\Users\\<you>\\Zomboid\\Backups",
+    "retention": 14,
+    "include_config": true
+  }
+}

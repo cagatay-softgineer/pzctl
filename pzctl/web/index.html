@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PZ Control</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<script>window.PZ_TOKEN = "__PZCTL_TOKEN__";</script>
+
+<header class="topbar">
+  <div class="brand">PZ<span>CONTROL</span></div>
+  <div class="pill" id="statePill"><i></i><span id="stateText">connecting</span></div>
+  <div class="stats">
+    <div class="stat"><label>uptime</label><b id="statUptime">--</b></div>
+    <div class="stat"><label>players</label><b id="statPlayers">--</b></div>
+    <div class="stat"><label>memory</label><b id="statMem">--</b></div>
+    <div class="stat"><label>rcon</label><b id="statRcon">--</b></div>
+  </div>
+  <div class="controls">
+    <button class="btn go"   data-act="start">Start</button>
+    <button class="btn warn" data-act="restart">Restart</button>
+    <button class="btn stop" data-act="stop">Stop</button>
+    <button class="btn ghost" data-act="kill" title="SIGKILL - skips the world save">Kill</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab on" data-tab="dashboard">Dashboard</button>
+  <button class="tab" data-tab="ini">Server INI</button>
+  <button class="tab" data-tab="sandbox">Sandbox</button>
+  <button class="tab" data-tab="mods">Mods</button>
+  <button class="tab" data-tab="launcher">Launcher</button>
+  <button class="tab" data-tab="backups">Backups</button>
+</nav>
+
+<main>
+  <!-- ── dashboard ─────────────────────────────────────────── -->
+  <section class="panel on" id="tab-dashboard">
+    <div class="grid-2">
+      <div class="card console-card">
+        <div class="card-head">
+          <h2>Console</h2>
+          <label class="check"><input type="checkbox" id="autoscroll" checked> follow</label>
+          <button class="btn tiny ghost" id="clearConsole">clear</button>
+        </div>
+        <div id="console" class="console"></div>
+        <form class="cmdline" id="cmdForm">
+          <input id="cmdInput" placeholder="type a server command, e.g. players" autocomplete="off" spellcheck="false">
+          <button class="btn go" type="submit">Send</button>
+        </form>
+        <div class="quickcmds">
+          <button class="chip" data-cmd="players">players</button>
+          <button class="chip" data-cmd="save">save</button>
+          <button class="chip" data-cmd="checkModsNeedUpdate">check mods</button>
+          <button class="chip" data-cmd="servermsg &quot;Hello survivors&quot;">broadcast</button>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="card-head"><h2>Online</h2></div>
+          <ul id="playerList" class="plain">no data yet</ul>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Upcoming</h2></div>
+          <ul id="scheduleList" class="plain">nothing scheduled</ul>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Paths</h2></div>
+          <dl id="pathList" class="paths"></dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── server ini ────────────────────────────────────────── -->
+  <section class="panel" id="tab-ini">
+    <div class="card">
+      <div class="card-head">
+        <h2>Server settings</h2>
+        <input class="search" id="iniSearch" placeholder="search name, key or description...">
+        <span class="dirty" id="iniDirty"></span>
+        <button class="btn ghost tiny" data-reload="ini">reload</button>
+        <button class="btn go" id="iniSave">Save</button>
+      </div>
+      <div class="toolbar">
+        <label class="check"><input type="checkbox" id="iniModified"> modified only</label>
+        <button class="btn tiny ghost" data-expand="iniFields">expand all</button>
+        <button class="btn tiny ghost" data-collapse="iniFields">collapse all</button>
+        <span class="counter" id="iniCount"></span>
+      </div>
+      <p class="hint" id="iniPath"></p>
+      <div class="groupnav" id="iniNav"></div>
+      <div id="iniFields" class="optgroups"></div>
+    </div>
+  </section>
+
+  <!-- ── sandbox ───────────────────────────────────────────── -->
+  <section class="panel" id="tab-sandbox">
+    <div class="card">
+      <div class="card-head">
+        <h2>Sandbox / world rules</h2>
+        <input class="search" id="sbSearch" placeholder="search name, key or description...">
+        <span class="dirty" id="sbDirty"></span>
+        <button class="btn ghost tiny" data-reload="sandbox">reload</button>
+        <button class="btn go" id="sbSave">Save</button>
+      </div>
+      <div class="toolbar">
+        <label class="check"><input type="checkbox" id="sbModified"> modified only</label>
+        <label class="check"><input type="checkbox" id="sbNonDefault"> differs from preset</label>
+        <button class="btn tiny ghost" data-expand="sbFields">expand all</button>
+        <button class="btn tiny ghost" data-collapse="sbFields">collapse all</button>
+        <span class="counter" id="sbCount"></span>
+      </div>
+      <p class="hint" id="sbPath"></p>
+      <div class="groupnav" id="sbNav"></div>
+      <div id="sbFields" class="optgroups"></div>
+    </div>
+  </section>
+
+  <!-- ── mods ──────────────────────────────────────────────── -->
+  <section class="panel" id="tab-mods">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h2>Active load order</h2>
+          <span class="dirty" id="modsDirty"></span>
+          <button class="btn ghost tiny" data-reload="mods">reload</button>
+          <button class="btn go" id="modsSave">Save</button>
+        </div>
+        <p class="hint">Order matters — the server loads top to bottom.</p>
+        <ol id="activeMods" class="modlist"></ol>
+        <div class="split">
+          <label>Mod IDs<textarea id="modsRaw" rows="4" spellcheck="false"></textarea></label>
+          <label>Workshop IDs<textarea id="workshopRaw" rows="4" spellcheck="false"></textarea></label>
+          <label>Map load order<textarea id="mapRaw" rows="3" spellcheck="false"></textarea></label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Installed in Workshop</h2>
+          <input class="search" id="modSearch" placeholder="filter mods...">
+        </div>
+        <p class="hint" id="workshopPath"></p>
+        <div id="installedMods" class="modgrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── launcher ──────────────────────────────────────────── -->
+  <section class="panel" id="tab-launcher">
+    <div class="grid-2">
+      <div class="col">
+        <div class="card">
+          <div class="card-head"><h2>Server identity</h2></div>
+          <div class="fields">
+            <label>Server name<input data-cfg="server_name"></label>
+            <label>Admin username<input data-cfg="admin_username"></label>
+            <label>Admin password<input data-cfg="admin_password" type="password"></label>
+            <label class="check"><input type="checkbox" data-cfg="steam"> Steam networking</label>
+            <label>Zomboid data folder<input data-cfg="zomboid_dir"></label>
+            <label>Cache dir override<input data-cfg="cache_dir" placeholder="(leave blank for default)"></label>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Java / memory</h2></div>
+          <div class="fields">
+            <label>-Xms<input data-cfg="java.xms"></label>
+            <label>-Xmx<input data-cfg="java.xmx"></label>
+            <label>Garbage collector<select data-cfg="java.gc">
+              <option value="-XX:+UseZGC">ZGC (low pause, Win10+)</option>
+              <option value="-XX:+UseG1GC">G1GC</option>
+              <option value="">JVM default</option>
+            </select></label>
+            <label>Extra JVM args (one per line)<textarea data-cfg="java.extra_args" rows="3" spellcheck="false"></textarea></label>
+          </div>
+          <p class="hint">Resulting command line:</p>
+          <pre id="cmdline" class="cmdpre"></pre>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="card-head"><h2>Supervision</h2></div>
+          <div class="fields">
+            <label class="check"><input type="checkbox" data-cfg="supervisor.autostart"> Start server when daemon launches</label>
+            <label class="check"><input type="checkbox" data-cfg="supervisor.auto_restart"> Restart automatically after a crash</label>
+            <label>Max restarts per window<input data-cfg="supervisor.max_restarts" type="number" min="0"></label>
+            <label>Window (seconds)<input data-cfg="supervisor.restart_window_sec" type="number" min="60"></label>
+            <label>Graceful stop timeout (s)<input data-cfg="supervisor.stop_timeout_sec" type="number" min="10"></label>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>RCON</h2><button class="btn ghost tiny" id="rconTest">test</button></div>
+          <div class="fields">
+            <label class="check"><input type="checkbox" data-cfg="rcon.enabled"> Use RCON for commands</label>
+            <label>Host<input data-cfg="rcon.host"></label>
+            <label>Port<input data-cfg="rcon.port" type="number"></label>
+            <label>Password<input data-cfg="rcon.password" type="password"></label>
+          </div>
+          <p class="hint">Must match RCONPort / RCONPassword in the server INI.</p>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Schedule</h2></div>
+          <h3 class="sub">Restarts</h3>
+          <div id="restartJobs" class="joblist"></div>
+          <button class="btn ghost tiny" id="addRestart">+ add restart</button>
+          <h3 class="sub">Backups</h3>
+          <div id="backupJobs" class="joblist"></div>
+          <button class="btn ghost tiny" id="addBackup">+ add backup</button>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Backup storage</h2></div>
+          <div class="fields">
+            <label>Folder<input data-cfg="backup.dir"></label>
+            <label>Keep last N<input data-cfg="backup.retention" type="number" min="0"></label>
+            <label class="check"><input type="checkbox" data-cfg="backup.include_config"> Include INI + SandboxVars</label>
+          </div>
+        </div>
+        <div class="saverow">
+          <span class="dirty" id="cfgDirty"></span>
+          <button class="btn go" id="cfgSave">Save launcher settings</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── backups ───────────────────────────────────────────── -->
+  <section class="panel" id="tab-backups">
+    <div class="card">
+      <div class="card-head">
+        <h2>Backups</h2>
+        <button class="btn ghost tiny" data-reload="backups">reload</button>
+        <button class="btn go" id="backupNow">Back up now</button>
+      </div>
+      <p class="hint" id="backupDir"></p>
+      <table class="table"><thead><tr><th>Archive</th><th>Size</th><th>Created</th></tr></thead>
+        <tbody id="backupRows"></tbody></table>
+    </div>
+  </section>
+</main>
+
+<div id="toasts"></div>
+<script src="/app.js"></script>
+</body>
+</html>
