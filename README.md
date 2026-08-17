@@ -1,5 +1,7 @@
 # pzctl
 
+[![tests](https://github.com/cagatay-softgineer/pzctl/actions/workflows/tests.yml/badge.svg)](https://github.com/cagatay-softgineer/pzctl/actions/workflows/tests.yml)
+
 Supervisor daemon + web control panel for a Project Zomboid dedicated server.
 Pure Python 3.11+ standard library — nothing to install, no dependencies.
 
