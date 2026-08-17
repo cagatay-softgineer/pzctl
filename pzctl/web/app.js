@@ -851,9 +851,7 @@ $("#aclForm").addEventListener("submit", async (ev) => {
   const level = $("#aclLevel").value;
   if (!username) return toast("enter a username", true);
   if (level === "admin" && !window.confirm(
-      'Give "' + username + '" full admin?
-
-Admin can use every command, change server ' +
+      'Give "' + username + '" full admin?\n\nAdmin can use every command, change server ' +
       'settings and manage players.')) return;
 
   const res = await api("/api/access-level", {
@@ -870,6 +868,53 @@ $("#modForm").addEventListener("submit", async (ev) => {
   if (!target) return toast("enter a name, Steam ID or IP", true);
   await moderate($("#modAction").value, target, null);
   $("#modTarget").value = "";
+});
+
+/* ── server update ─────────────────────────────────────────── */
+
+let suTimer = null;
+
+async function pollServerUpdate() {
+  const s = await api("/api/server/update");
+  const el = $("#suState");
+  if (s.running) {
+    el.textContent = "updating... (" + Math.round(s.elapsed_sec || 0) + "s) — see console";
+    return false;
+  }
+  if (s.result) {
+    el.textContent = s.result.ok ? "update finished" : (s.result.error || "update failed");
+  } else {
+    el.textContent = "";
+  }
+  return true;
+}
+
+$("#suRun").addEventListener("click", async () => {
+  if (!window.confirm(
+    "Update the game server via SteamCMD?\n\n" +
+    "The server must be stopped. A backup is taken first.\n" +
+    "Your world, config and mods are not touched — only the server files."
+  )) return;
+
+  const btn = $("#suRun");
+  btn.disabled = true;
+  const res = await api("/api/server/update", { method: "POST", body: { confirm: true } });
+  if (!res.ok) {
+    btn.disabled = false;
+    $("#suState").textContent = "";
+    return toast(res.error || "could not start the update", true);
+  }
+  toast("update started — progress in the Dashboard console");
+  if (res.safety_backup) toast("backed up as " + res.safety_backup);
+
+  if (suTimer) clearInterval(suTimer);
+  suTimer = setInterval(async () => {
+    if (await pollServerUpdate()) {
+      clearInterval(suTimer);
+      suTimer = null;
+      btn.disabled = false;
+    }
+  }, 3000);
 });
 
 /* ── anti-cheat ────────────────────────────────────────────── */
@@ -966,14 +1011,9 @@ $("#updateBtn").addEventListener("click", async () => {
 // effect, so the confirmation says both things plainly.
 async function offerUpgrade(info) {
   const ok = window.confirm(
-    "Upgrade pzctl from v" + info.current + " to v" + info.latest + "?
-
-" +
-    "The game server must be stopped first.
-" +
-    "Your pzctl.json and logs are left untouched, and the current version is kept.
-
-" +
+    "Upgrade pzctl from v" + info.current + " to v" + info.latest + "?\n\n" +
+    "The game server must be stopped first.\n" +
+    "Your pzctl.json and logs are left untouched, and the current version is kept.\n\n" +
     "After upgrading you must restart pzctl for the new version to run."
   );
   if (!ok) return;
@@ -982,12 +1022,8 @@ async function offerUpgrade(info) {
   if (!res.ok) return toast(res.error || "upgrade failed", true);
   toast("upgraded to v" + res.installed + " - restart pzctl to run it", false);
   window.alert(
-    "Upgrade installed.
-
-" + res.note +
-    "
-
-Previous version kept as: " + res.previous_kept_as
+    "Upgrade installed.\n\n" + res.note +
+    "\n\nPrevious version kept as: " + res.previous_kept_as
   );
 }
 

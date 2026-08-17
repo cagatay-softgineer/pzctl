@@ -26,6 +26,7 @@ from . import (
     pzini,
     rcon,
     sandbox,
+    serverupdate,
     updates,
     upgrade,
     whitelist,
@@ -394,6 +395,15 @@ class Handler(BaseHTTPRequestHandler):
     def api_set_anticheat(self, params):
         self._json(anticheat.write(self.ctx.cfg, self._body().get("types") or {}))
 
+    def api_server_update(self, params):
+        body = self._body()
+        if body.get("confirm") is not True:
+            return self._error(400, "server update requires confirm: true")
+        self._json(serverupdate.start(self.ctx.cfg, self.ctx.sup))
+
+    def api_server_update_status(self, params):
+        self._json(serverupdate.status())
+
     def api_logs(self, params):
         self._json(
             {
@@ -446,6 +456,8 @@ ROUTES = {
     ("POST", "/api/backups/restore"): Handler.api_restore_backup,
     ("POST", "/api/moderate"): Handler.api_moderate,
     ("POST", "/api/access-level"): Handler.api_access_level,
+    ("POST", "/api/server/update"): Handler.api_server_update,
+    ("GET", "/api/server/update"): Handler.api_server_update_status,
     ("GET", "/api/anticheat"): Handler.api_get_anticheat,
     ("POST", "/api/anticheat"): Handler.api_set_anticheat,
     ("GET", "/api/diagnose"): Handler.api_diagnose,
