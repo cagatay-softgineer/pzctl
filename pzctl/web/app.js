@@ -1151,6 +1151,53 @@ $("#modCheckBtn").addEventListener("click", async () => {
   }, 3000);
 });
 
+/* ── world controls ────────────────────────────────────────── */
+
+async function gmPost(path, body, label) {
+  const res = await api("/api/gm/" + path, { method: "POST", body: body });
+  toast(res.ok ? label + " — " + (res.reply || "sent") : res.error, !res.ok);
+  return res;
+}
+
+$("#tpForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  gmPost("teleport", { who: $("#tpWho").value, destination: $("#tpTo").value }, "teleported");
+});
+
+function sendState(on) {
+  gmPost("state", {
+    state: $("#stateWhich").value,
+    username: $("#stateUser").value,
+    enabled: on,
+  }, $("#stateWhich").value + (on ? " on" : " off"));
+}
+$("#stateForm").addEventListener("submit", (ev) => { ev.preventDefault(); sendState(true); });
+$("#stateOff").addEventListener("click", () => sendState(false));
+
+$$("#weatherBtns .chip").forEach((chip) =>
+  chip.addEventListener("click", () => gmPost("weather", { event: chip.dataset.ev }, chip.dataset.ev)));
+
+$("#rainForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const which = $("#rainWhich").value;
+  gmPost("weather", { event: which, value: Number($("#rainValue").value) }, which);
+});
+
+$("#hordeForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const n = Number($("#hordeCount").value);
+  // Zombies cannot be un-spawned, so this one confirms.
+  if (!window.confirm("Spawn " + n + " zombies near " + $("#hordeUser").value +
+      "?\n\nThis cannot be undone and a large horde will hurt performance.")) return;
+  gmPost("horde", { username: $("#hordeUser").value, count: n, confirm: true }, n + " zombies spawned");
+});
+
+$("#bcForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const res = await gmPost("broadcast", { message: $("#bcMessage").value }, "broadcast sent");
+  if (res.ok) $("#bcMessage").value = "";
+});
+
 /* ── spawn vehicle ─────────────────────────────────────────── */
 
 let vehPick = null;

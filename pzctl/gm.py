@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 
-from .moderation import validate_name
+from .moderation import clean_text, validate_name
 
 PERK_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 # A full item id: Module.ItemName. Both halves are bare identifiers.
@@ -150,3 +150,166 @@ def add_vehicle(supervisor, script: str, target: str) -> dict:
     if not ok:
         supervisor.emit(f"gm: addvehicle {script} FAILED - {reply}", "error")
     return {"ok": ok, "script": script, "target": target, "coords": coords, "reply": reply}
+
+
+# -- teleport ------------------------------------------------------------
+
+def teleport(supervisor, who: str, destination: str) -> dict:
+    """Move a player to another player, or to coordinates.
+
+    `teleport "player"` / `teleport "p1" "p2"` move players; `teleportto x,y,z`
+    is a separate command taking only a position, so the destination form
+    decides which one is sent.
+    """
+    who = str(who or "").strip()
+    destination = str(destination or "").strip()
+
+    problem = validate_name(who)
+    if problem:
+        return {"ok": False, "error": problem}
+    if not destination:
+        return {"ok": False, "error": "no destination given - a player name or x,y,z"}
+
+    compact = destination.replace(" ", "")
+    if COORD_RE.match(compact):
+        # teleportto positions the admin, so the player is moved to them first.
+        command = f'teleportto {compact}'
+        target = compact
+        coords = True
+    elif "," in destination:
+        return {"ok": False, "error": f"invalid coordinates: {destination!r} (expected x,y,z)"}
+    else:
+        problem = validate_name(destination)
+        if problem:
+            return {"ok": False, "error": f"destination: {problem}"}
+        command = f'teleport "{who}" "{destination}"'
+        target = destination
+        coords = False
+
+    if supervisor is None or not supervisor.is_alive():
+        return {"ok": False, "error": "server is not running"}
+
+    supervisor.emit(f"gm: teleport {who!r} -> {target}", "pzctl")
+    ok, reply = supervisor.send_command(command, prefer="auto")
+    return {"ok": ok, "who": who, "target": target, "coords": coords, "reply": reply}
+
+
+# -- weather and atmosphere ---------------------------------------------
+
+# Commands taking no argument.
+SIMPLE_EVENTS = ("stoprain", "stopweather", "chopper", "gunshot", "alarm")
+# Commands taking a single numeric argument, with the documented range.
+VALUED_EVENTS = {"startrain": (1, 100), "startstorm": (1, 24)}
+# Commands taking a player name.
+TARGETED_EVENTS = ("lightning", "thunder")
+
+
+def weather(supervisor, event: str, value=None) -> dict:
+    """Fire a weather or atmosphere event."""
+    event = str(event or "").strip().lower()
+
+    if event in SIMPLE_EVENTS:
+        command = event
+    elif event in VALUED_EVENTS:
+        low, high = VALUED_EVENTS[event]
+        try:
+            amount = int(value)
+        except (TypeError, ValueError):
+            return {"ok": False, "error": f"{event} needs a number between {low} and {high}"}
+        if not low <= amount <= high:
+            return {"ok": False, "error": f"{event} takes {low}-{high}, got {amount}"}
+        command = f'{event} "{amount}"'
+    elif event in TARGETED_EVENTS:
+        name = str(value or "").strip()
+        problem = validate_name(name)
+        if problem:
+            return {"ok": False, "error": f"{event} needs a player name: {problem}"}
+        command = f'{event} "{name}"'
+    else:
+        return {"ok": False, "error": f"unknown event: {event!r}"}
+
+    if supervisor is None or not supervisor.is_alive():
+        return {"ok": False, "error": "server is not running"}
+
+    supervisor.emit(f"gm: {command}", "pzctl")
+    ok, reply = supervisor.send_command(command, prefer="auto")
+    return {"ok": ok, "event": event, "reply": reply}
+
+
+# -- hordes --------------------------------------------------------------
+
+MAX_HORDE = 500
+
+
+def create_horde(supervisor, username: str, count) -> dict:
+    """Spawn zombies near a player.
+
+    Bounded hard: a horde is one of the easiest ways to bring a server to its
+    knees, and a mistyped count cannot be undone once the zombies exist.
+    """
+    username = str(username or "").strip()
+    problem = validate_name(username)
+    if problem:
+        return {"ok": False, "error": problem}
+
+    try:
+        amount = int(count)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "count must be a whole number"}
+    if amount < 1:
+        return {"ok": False, "error": "count must be at least 1"}
+    if amount > MAX_HORDE:
+        return {"ok": False, "error": f"count must be {MAX_HORDE} or fewer - a larger horde will "
+                                      "hurt server performance and cannot be undone"}
+
+    if supervisor is None or not supervisor.is_alive():
+        return {"ok": False, "error": "server is not running"}
+
+    supervisor.emit(f"gm: spawning {amount} zombies near {username!r}", "pzctl")
+    ok, reply = supervisor.send_command(f'createhorde {amount} "{username}"', prefer="auto")
+    return {"ok": ok, "username": username, "count": amount, "reply": reply}
+
+
+# -- player state --------------------------------------------------------
+
+STATE_COMMANDS = ("godmode", "invisible", "noclip")
+
+
+def player_state(supervisor, state: str, username: str, enabled: bool) -> dict:
+    """Toggle godmode, invisibility or noclip for a player."""
+    state = str(state or "").strip().lower()
+    if state not in STATE_COMMANDS:
+        return {"ok": False, "error": f"unknown state: {state!r}"}
+
+    username = str(username or "").strip()
+    problem = validate_name(username)
+    if problem:
+        return {"ok": False, "error": problem}
+
+    if supervisor is None or not supervisor.is_alive():
+        return {"ok": False, "error": "server is not running"}
+
+    flag = "true" if enabled else "false"
+    supervisor.emit(f"gm: {state} {flag} for {username!r}", "pzctl")
+    ok, reply = supervisor.send_command(f'{state} "{username}" -{flag}', prefer="auto")
+    return {"ok": ok, "state": state, "username": username, "enabled": bool(enabled), "reply": reply}
+
+
+# -- broadcast -----------------------------------------------------------
+
+MAX_MESSAGE = 500
+
+
+def broadcast(supervisor, message: str) -> dict:
+    """Send a message to everyone on the server."""
+    text = clean_text(message)
+    if not text:
+        return {"ok": False, "error": "no message given"}
+    if len(text) > MAX_MESSAGE:
+        return {"ok": False, "error": f"message must be {MAX_MESSAGE} characters or fewer"}
+
+    if supervisor is None or not supervisor.is_alive():
+        return {"ok": False, "error": "server is not running"}
+
+    ok, reply = supervisor.send_command(f'servermsg "{text}"', prefer="auto")
+    return {"ok": ok, "message": text, "reply": reply}

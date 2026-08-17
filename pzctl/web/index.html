@@ -94,6 +94,48 @@
             Use <b>none</b> to remove elevated access.</p>
         </div>
         <div class="card">
+          <div class="card-head"><h2>World controls</h2></div>
+          <form class="modform" id="tpForm">
+            <input id="tpWho" placeholder="player to move" autocomplete="off" spellcheck="false">
+            <input id="tpTo" placeholder="to player or x,y,z" autocomplete="off" spellcheck="false">
+            <button class="btn ghost" type="submit">Teleport</button>
+          </form>
+          <form class="modform" id="stateForm">
+            <input id="stateUser" placeholder="player" autocomplete="off" spellcheck="false">
+            <select id="stateWhich">
+              <option value="godmode">godmode</option>
+              <option value="invisible">invisible</option>
+              <option value="noclip">noclip</option>
+            </select>
+            <button class="btn ghost" type="submit" data-on="true">On</button>
+            <button class="btn ghost" type="button" id="stateOff">Off</button>
+          </form>
+          <div class="quickcmds" id="weatherBtns">
+            <button class="chip" data-ev="stoprain">stop rain</button>
+            <button class="chip" data-ev="stopweather">stop weather</button>
+            <button class="chip" data-ev="chopper">chopper</button>
+            <button class="chip" data-ev="gunshot">gunshot</button>
+            <button class="chip" data-ev="alarm">alarm</button>
+          </div>
+          <form class="modform" id="rainForm">
+            <select id="rainWhich">
+              <option value="startrain">rain (1-100)</option>
+              <option value="startstorm">storm (1-24 h)</option>
+            </select>
+            <input id="rainValue" type="number" min="1" value="50">
+            <button class="btn ghost" type="submit">Start</button>
+          </form>
+          <form class="modform" id="hordeForm">
+            <input id="hordeUser" placeholder="player" autocomplete="off" spellcheck="false">
+            <input id="hordeCount" type="number" min="1" max="500" value="10">
+            <button class="btn danger" type="submit">Spawn horde</button>
+          </form>
+          <form class="modform" id="bcForm">
+            <input id="bcMessage" placeholder="message to everyone" autocomplete="off">
+            <button class="btn" type="submit">Broadcast</button>
+          </form>
+        </div>
+        <div class="card">
           <div class="card-head"><h2>Spawn vehicle</h2><span class="hint" id="vehCount"></span></div>
           <form class="modform" id="vehForm">
             <input id="vehTarget" placeholder="username or x,y,z" autocomplete="off" spellcheck="false">
