@@ -25,6 +25,7 @@ from . import (
     rcon,
     sandbox,
     updates,
+    upgrade,
     whitelist,
 )
 from .config import Config
@@ -367,6 +368,12 @@ class Handler(BaseHTTPRequestHandler):
     def api_check_updates(self, params):
         self._json(updates.check())
 
+    def api_upgrade(self, params):
+        # Replacing pzctl's own code is not something a stray POST should do.
+        if self._body().get("confirm") is not True:
+            return self._error(400, "upgrade requires confirm: true")
+        self._json(upgrade.apply(self.ctx.sup))
+
     def api_logs(self, params):
         self._json(
             {
@@ -425,6 +432,7 @@ ROUTES = {
     ("POST", "/api/whitelist/mode"): Handler.api_whitelist_mode,
     ("POST", "/api/whitelist/user"): Handler.api_whitelist_user,
     ("GET", "/api/updates"): Handler.api_check_updates,
+    ("POST", "/api/updates/apply"): Handler.api_upgrade,
     ("GET", "/api/logs"): Handler.api_logs,
     ("GET", "/api/logs/tail"): Handler.api_log_tail,
     ("POST", "/api/rcon/test"): Handler.api_rcon_test,
