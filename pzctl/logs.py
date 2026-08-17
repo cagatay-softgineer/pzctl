@@ -49,7 +49,7 @@ def log_dir(cfg: Config) -> Path:
     return cfg.zomboid_dir / "Logs"
 
 
-def _candidates(cfg: Config) -> list[Path]:
+def candidates(cfg: Config) -> list[Path]:
     """Files eligible for viewing.
 
     Everything in `Zomboid/Logs/`, plus `server-console.txt` which some
@@ -70,7 +70,7 @@ def _candidates(cfg: Config) -> list[Path]:
 def discover(cfg: Config) -> list[dict]:
     """List the game's log files, newest first."""
     entries = []
-    for path in _candidates(cfg):
+    for path in candidates(cfg):
         try:
             stat = path.stat()
         except OSError:
@@ -96,7 +96,7 @@ def resolve(cfg: Config, name: str) -> Path | None:
     """
     if not name or name != Path(name).name:
         return None
-    for path in _candidates(cfg):
+    for path in candidates(cfg):
         if path.name == name:
             return path
     return None

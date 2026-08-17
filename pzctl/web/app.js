@@ -847,6 +847,59 @@ $("#modForm").addEventListener("submit", async (ev) => {
   $("#modTarget").value = "";
 });
 
+/* ── mod update check ──────────────────────────────────────── */
+
+let modCheckTimer = null;
+
+function renderModCheck(data) {
+  const el = $("#modCheckState");
+  if (!data.ok) {
+    el.textContent = data.error || "check failed";
+    el.className = "hint bad";
+    return true;
+  }
+  if (data.status === "checking") {
+    el.textContent = "asking the server... (" + Math.round(data.elapsed_sec || 0) + "s)";
+    el.className = "hint";
+    return false;
+  }
+  if (data.status === "update_needed") {
+    el.textContent = "mods need updating — restart the server to pick them up";
+    el.className = "hint bad";
+    return true;
+  }
+  if (data.status === "no_update_reported") {
+    // Deliberately not "up to date": the server has no message for that, so
+    // all we know is that it did not complain.
+    el.textContent = "no update announced — the server has no 'up to date' reply, so this is the absence of a warning";
+    el.className = "hint";
+    return true;
+  }
+  el.textContent = "";
+  return true;
+}
+
+$("#modCheckBtn").addEventListener("click", async () => {
+  const btn = $("#modCheckBtn");
+  btn.disabled = true;
+  const started = await api("/api/mods/check", { method: "POST", body: {} });
+  if (!started.ok) {
+    btn.disabled = false;
+    return renderModCheck(started);
+  }
+  renderModCheck({ ok: true, status: "checking", elapsed_sec: 0 });
+
+  if (modCheckTimer) clearInterval(modCheckTimer);
+  modCheckTimer = setInterval(async () => {
+    const done = renderModCheck(await api("/api/mods/check"));
+    if (done) {
+      clearInterval(modCheckTimer);
+      modCheckTimer = null;
+      btn.disabled = false;
+    }
+  }, 3000);
+});
+
 /* ── whitelist ─────────────────────────────────────────────── */
 
 async function refreshWhitelist() {
