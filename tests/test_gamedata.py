@@ -195,3 +195,66 @@ class ItemTests(GameDataTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+VEHICLE_SCRIPT = """module Base
+{
+    vehicle CarLightsPolice
+    {
+        mechanicType = 1,
+    }
+
+    vehicle CarNormalBurnt
+    {
+        mechanicType = 1,
+    }
+}
+"""
+
+VEHICLE_NAMES = """{
+    "IGUI_VehicleNameCarLightsPolice": "Police Chevalier Nyala"
+}
+"""
+
+
+class VehicleTests(GameDataTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        (self.scripts / "entities" / "vehicles.txt").write_text(VEHICLE_SCRIPT, encoding="utf-8")
+        # Vehicle names live alongside the perk keys in IG_UI.json.
+        merged = IG_UI.rstrip().rstrip("}").rstrip().rstrip(",")
+        merged += ',\n    "IGUI_VehicleNameCarLightsPolice": "Police Chevalier Nyala"\n}\n'
+        (self.translate / "IG_UI.json").write_text(merged, encoding="utf-8")
+        gamedata.reset_cache()
+
+    def test_finds_vehicles(self):
+        result = gamedata.vehicles()
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["total"], 2)
+
+    def test_ids_are_module_qualified(self):
+        ids = [v["id"] for v in gamedata.vehicles()["vehicles"]]
+        self.assertIn("Base.CarLightsPolice", ids)
+
+    def test_translated_name_used(self):
+        entry = {v["id"]: v for v in gamedata.vehicles()["vehicles"]}["Base.CarLightsPolice"]
+        self.assertEqual(entry["name"], "Police Chevalier Nyala")
+
+    def test_untranslated_falls_back_to_script_name(self):
+        """Burnt and smashed variants have no translation but are still usable."""
+        entry = {v["id"]: v for v in gamedata.vehicles()["vehicles"]}["Base.CarNormalBurnt"]
+        self.assertEqual(entry["name"], "CarNormalBurnt")
+
+    def test_search_matches_name(self):
+        self.assertEqual(gamedata.vehicles(search="police")["total"], 1)
+
+    def test_search_matches_id(self):
+        self.assertEqual(gamedata.vehicles(search="burnt")["total"], 1)
+
+    def test_items_and_vehicles_are_separate(self):
+        self.assertEqual(gamedata.items()["total"], 2)
+        self.assertEqual(gamedata.vehicles()["total"], 2)
+
+    def test_missing_scripts_directory(self):
+        gamedata.SCRIPTS_DIR = self.dir / "nowhere"
+        self.assertFalse(gamedata.vehicles()["ok"])

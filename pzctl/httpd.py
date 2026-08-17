@@ -443,6 +443,19 @@ class Handler(BaseHTTPRequestHandler):
             )
         )
 
+    def api_game_vehicles(self, params):
+        self._json(
+            gamedata.vehicles(
+                (params.get("search") or [""])[0],
+                (params.get("limit") or ["100"])[0],
+                (params.get("offset") or ["0"])[0],
+            )
+        )
+
+    def api_add_vehicle(self, params):
+        body = self._body()
+        self._json(gm.add_vehicle(self.ctx.sup, body.get("script", ""), body.get("target", "")))
+
     def api_logs(self, params):
         self._json(
             {
@@ -500,6 +513,8 @@ ROUTES = {
     ("POST", "/api/gm/addxp"): Handler.api_add_xp,
     ("POST", "/api/gm/additem"): Handler.api_add_item,
     ("GET", "/api/game/items"): Handler.api_game_items,
+    ("GET", "/api/game/vehicles"): Handler.api_game_vehicles,
+    ("POST", "/api/gm/addvehicle"): Handler.api_add_vehicle,
     ("GET", "/api/game/perks"): Handler.api_game_perks,
     ("GET", "/api/profiles"): Handler.api_profiles,
     ("POST", "/api/profiles/switch"): Handler.api_switch_profile,

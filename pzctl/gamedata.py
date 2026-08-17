@@ -41,13 +41,15 @@ TRANSLATE_DIR = SERVER_DIR / "media" / "lua" / "shared" / "Translate" / "EN"
 
 MODULE_RE = re.compile(r"^\s*module\s+([A-Za-z0-9_]+)")
 ITEM_RE = re.compile(r"^\s*item\s+([A-Za-z0-9_.]+)\s*$")
+VEHICLE_RE = re.compile(r"^\s*vehicle\s+([A-Za-z0-9_]+)\s*$")
+VEHICLE_NAME_RE = re.compile(r'"IGUI_VehicleName([A-Za-z0-9_]*)"\s*:\s*"([^"]*)"')
 DISPLAY_RE = re.compile(r"^\s*DisplayName\s*=\s*(.+?)\s*,?\s*$")
 TYPE_RE = re.compile(r"^\s*Type\s*=\s*(.+?)\s*,?\s*$")
 PERK_RE = re.compile(r'"IGUI_perks_([A-Za-z0-9_]+)"\s*:\s*"([^"]*)"')
 # Display names are keyed by full item id: "Base.Axe": "Axe".
 ITEM_NAME_RE = re.compile(r'"([A-Za-z0-9_]+\.[A-Za-z0-9_]+)"\s*:\s*"([^"]*)"')
 
-_cache: dict = {"items": None, "stamp": None}
+_cache: dict = {"items": None, "vehicles": None, "stamp": None}
 
 
 def _scripts_stamp() -> float | None:
@@ -155,6 +157,72 @@ def _parse_items() -> list[dict]:
     return sorted(unique, key=lambda e: e["name"].lower())
 
 
+def _parse_vehicles() -> list[dict]:
+    """Vehicle scripts, named from the game's translations where possible."""
+    if not SCRIPTS_DIR.is_dir():
+        return []
+
+    path = TRANSLATE_DIR / "IG_UI.json"
+    names: dict[str, str] = {}
+    if path.is_file():
+        try:
+            names = dict(
+                VEHICLE_NAME_RE.findall(path.read_text(encoding="utf-8", errors="replace"))
+            )
+        except OSError:
+            names = {}
+
+    found: dict[str, dict] = {}
+    for script in sorted(SCRIPTS_DIR.rglob("*.txt")):
+        try:
+            lines = script.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        module = ""
+        for line in lines:
+            match = MODULE_RE.match(line)
+            if match:
+                module = match.group(1)
+            match = VEHICLE_RE.match(line)
+            if match:
+                key = match.group(1)
+                full = f"{module}.{key}" if module else key
+                if full not in found:
+                    # Burnt and smashed variants have no translation; the script
+                    # name describes them well enough to be worth listing.
+                    found[full] = {"id": full, "script": key, "name": names.get(key, key)}
+    return sorted(found.values(), key=lambda e: e["name"].lower())
+
+
+def vehicles(search: str = "", limit: int = 100, offset: int = 0) -> dict:
+    """Search the vehicle catalog. Cached alongside the item catalog."""
+    if not SCRIPTS_DIR.is_dir():
+        return {
+            "ok": False,
+            "error": f"no game scripts at {SCRIPTS_DIR} - is pzctl inside the server directory?",
+        }
+
+    stamp = _scripts_stamp()
+    if _cache["vehicles"] is None or _cache["stamp"] != stamp:
+        _cache["vehicles"] = _parse_vehicles()
+        _cache["stamp"] = stamp
+
+    catalog = _cache["vehicles"]
+    needle = str(search or "").strip().lower()
+    if needle:
+        catalog = [
+            e for e in catalog if needle in e["name"].lower() or needle in e["id"].lower()
+        ]
+    limit = max(1, min(int(limit or 100), 500))
+    offset = max(0, int(offset or 0))
+    return {
+        "ok": True,
+        "total": len(catalog),
+        "offset": offset,
+        "vehicles": catalog[offset : offset + limit],
+    }
+
+
 def items(search: str = "", limit: int = 100, offset: int = 0) -> dict:
     """Search the item catalog. Cached until the scripts change on disk."""
     if not SCRIPTS_DIR.is_dir():
@@ -165,6 +233,8 @@ def items(search: str = "", limit: int = 100, offset: int = 0) -> dict:
 
     stamp = _scripts_stamp()
     if _cache["items"] is None or _cache["stamp"] != stamp:
+        if _cache["stamp"] != stamp:
+            _cache["vehicles"] = None
         _cache["items"] = _parse_items()
         _cache["stamp"] = stamp
 
@@ -217,4 +287,4 @@ def perks() -> dict:
 
 
 def reset_cache() -> None:
-    _cache.update({"items": None, "stamp": None})
+    _cache.update({"items": None, "vehicles": None, "stamp": None})
