@@ -23,6 +23,7 @@ from . import (
     moderation,
     mods,
     optionmeta,
+    profiles,
     pzini,
     rcon,
     sandbox,
@@ -404,6 +405,16 @@ class Handler(BaseHTTPRequestHandler):
     def api_server_update_status(self, params):
         self._json(serverupdate.status())
 
+    def api_profiles(self, params):
+        self._json(profiles.discover(self.ctx.cfg))
+
+    def api_switch_profile(self, params):
+        self._json(profiles.switch(self.ctx.cfg, self.ctx.sup, self._body().get("name", "")))
+
+    def api_create_profile(self, params):
+        body = self._body()
+        self._json(profiles.create(self.ctx.cfg, body.get("name", ""), body.get("copy_from")))
+
     def api_logs(self, params):
         self._json(
             {
@@ -458,6 +469,9 @@ ROUTES = {
     ("POST", "/api/access-level"): Handler.api_access_level,
     ("POST", "/api/server/update"): Handler.api_server_update,
     ("GET", "/api/server/update"): Handler.api_server_update_status,
+    ("GET", "/api/profiles"): Handler.api_profiles,
+    ("POST", "/api/profiles/switch"): Handler.api_switch_profile,
+    ("POST", "/api/profiles/create"): Handler.api_create_profile,
     ("GET", "/api/anticheat"): Handler.api_get_anticheat,
     ("POST", "/api/anticheat"): Handler.api_set_anticheat,
     ("GET", "/api/diagnose"): Handler.api_diagnose,

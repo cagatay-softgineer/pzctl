@@ -684,6 +684,7 @@ function readJobs(hostId, kind) {
 function markCfgDirty() { $("#cfgDirty").textContent = "unsaved changes"; }
 
 LOADERS.launcher = async function () {
+  loadProfiles();
   const data = await api("/api/config/launcher");
   if (!data.ok) return toast(data.error || "load failed", true);
   cfgData = data.config;
@@ -868,6 +869,76 @@ $("#modForm").addEventListener("submit", async (ev) => {
   if (!target) return toast("enter a name, Steam ID or IP", true);
   await moderate($("#modAction").value, target, null);
   $("#modTarget").value = "";
+});
+
+/* ── profiles ──────────────────────────────────────────────── */
+
+async function loadProfiles() {
+  const data = await api("/api/profiles");
+  const list = $("#profileList");
+  const copy = $("#profileCopy");
+  list.innerHTML = "";
+  copy.innerHTML = '<option value="">start fresh</option>';
+  if (!data.ok) return;
+
+  data.profiles.forEach((p) => {
+    const li = document.createElement("li");
+    li.className = "playerrow";
+
+    const label = document.createElement("span");
+    label.textContent = p.name + (p.current ? " (in use)" : "");
+    if (!p.has_config) {
+      const note = document.createElement("small");
+      note.textContent = "no config yet";
+      label.appendChild(note);
+    } else if (!p.has_save) {
+      const note = document.createElement("small");
+      note.textContent = "no world yet";
+      label.appendChild(note);
+    }
+    li.appendChild(label);
+
+    if (!p.current) {
+      const btn = document.createElement("button");
+      btn.className = "btn tiny ghost";
+      btn.textContent = "use";
+      btn.addEventListener("click", () => switchProfile(p.name, p.has_config));
+      li.appendChild(btn);
+    }
+    list.appendChild(li);
+
+    if (p.has_config) {
+      const opt = document.createElement("option");
+      opt.value = p.name;
+      opt.textContent = "copy " + p.name;
+      copy.appendChild(opt);
+    }
+  });
+}
+
+async function switchProfile(name, hasConfig) {
+  const warning = hasConfig
+    ? ""
+    : "\n\nThis profile has no config. The server will generate a fresh world and default settings on its next start.";
+  if (!window.confirm('Switch to profile "' + name + '"?' + warning)) return;
+
+  const res = await api("/api/profiles/switch", { method: "POST", body: { name: name } });
+  if (!res.ok) return toast(res.error || "could not switch", true);
+  toast("now using " + res.current + (res.note ? " — " + res.note : ""));
+  loadProfiles();
+  refreshStatus();
+}
+
+$("#profileForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const res = await api("/api/profiles/create", {
+    method: "POST",
+    body: { name: $("#profileName").value, copy_from: $("#profileCopy").value || null },
+  });
+  if (!res.ok) return toast(res.error || "could not create", true);
+  $("#profileName").value = "";
+  toast("created " + res.name + " — " + res.note);
+  loadProfiles();
 });
 
 /* ── server update ─────────────────────────────────────────── */
