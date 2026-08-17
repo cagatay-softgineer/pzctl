@@ -943,6 +943,13 @@ $("#profileForm").addEventListener("submit", async (ev) => {
   loadProfiles();
 });
 
+/* ── notifications ─────────────────────────────────────────── */
+
+$("#notifyTest").addEventListener("click", async () => {
+  const res = await api("/api/notify/test", { method: "POST", body: {} });
+  toast(res.ok ? "test message sent to Discord" : (res.error || "failed"), !res.ok);
+});
+
 /* ── performance ───────────────────────────────────────────── */
 
 async function loadPerf() {

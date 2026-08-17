@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import rcon
-from . import logconfig, modlint
+from . import logconfig, modlint, notify
 from .config import LOG_DIR, SERVER_DIR, Config
 
 STOPPED = "stopped"
@@ -295,6 +295,7 @@ class Supervisor:
             self.emit(line, "server")
             if self.state == STARTING and any(m in line for m in READY_MARKERS):
                 self.state = RUNNING
+                notify.event(self.cfg, "started")
                 self.ready_at = time.time()
                 self.emit("server reports ready", "pzctl")
 
