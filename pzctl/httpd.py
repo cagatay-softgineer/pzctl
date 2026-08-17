@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import __version__
 from . import (
+    anticheat,
     backup,
     crashdiag,
     liveconfig,
@@ -387,6 +388,12 @@ class Handler(BaseHTTPRequestHandler):
             )
         )
 
+    def api_get_anticheat(self, params):
+        self._json(anticheat.read(self.ctx.cfg))
+
+    def api_set_anticheat(self, params):
+        self._json(anticheat.write(self.ctx.cfg, self._body().get("types") or {}))
+
     def api_logs(self, params):
         self._json(
             {
@@ -439,6 +446,8 @@ ROUTES = {
     ("POST", "/api/backups/restore"): Handler.api_restore_backup,
     ("POST", "/api/moderate"): Handler.api_moderate,
     ("POST", "/api/access-level"): Handler.api_access_level,
+    ("GET", "/api/anticheat"): Handler.api_get_anticheat,
+    ("POST", "/api/anticheat"): Handler.api_set_anticheat,
     ("GET", "/api/diagnose"): Handler.api_diagnose,
     ("POST", "/api/mods/check"): Handler.api_mod_check_start,
     ("GET", "/api/mods/check"): Handler.api_mod_check_poll,

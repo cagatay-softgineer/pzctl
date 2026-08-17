@@ -141,6 +141,19 @@
       <div class="groupnav" id="iniNav"></div>
       <div id="iniFields" class="optgroups"></div>
     </div>
+    <div class="card">
+      <div class="card-head">
+        <h2>Anti-cheat</h2>
+        <span class="hint" id="acSummary"></span>
+        <button class="btn ghost tiny" id="acAllOn">enable all</button>
+        <button class="btn ghost tiny" id="acAllOff">disable all</button>
+        <button class="btn go" id="acSave">Save</button>
+      </div>
+      <p class="hint">24 independent checks, all on by default. <b>Leave them alone unless a
+        mod’s documentation tells you to turn a specific one off</b> — disabling checks
+        weakens the protection they provide. Changes need a server restart.</p>
+      <div id="acGrid" class="acgrid"></div>
+    </div>
   </section>
 
   <!-- ── sandbox ───────────────────────────────────────────── -->
