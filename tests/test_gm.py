@@ -112,3 +112,72 @@ class AddXpTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AddItemTests(unittest.TestCase):
+    def test_sends_the_documented_command(self):
+        sup = FakeSupervisor()
+        result = gm.add_item(sup, "rj", "Base.Axe", 2)
+        self.assertTrue(result["ok"])
+        self.assertEqual(sup.sent, ['additem "rj" "Base.Axe" 2'])
+
+    def test_defaults_to_one(self):
+        sup = FakeSupervisor()
+        gm.add_item(sup, "rj", "Base.Axe")
+        self.assertEqual(sup.sent, ['additem "rj" "Base.Axe" 1'])
+
+    def test_requires_module_qualified_id(self):
+        """additem takes Module.ItemName; a bare name will not work."""
+        sup = FakeSupervisor()
+        self.assertFalse(gm.add_item(sup, "rj", "Axe")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_rejects_injection_in_the_item_id(self):
+        sup = FakeSupervisor()
+        for bad in ('Base.Axe" ; quit', "Base.Axe quit", "Base.Axe\nquit", "../Base.Axe"):
+            self.assertFalse(gm.add_item(sup, "rj", bad)["ok"], bad)
+        self.assertEqual(sup.sent, [])
+
+    def test_rejects_injection_in_the_username(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.add_item(sup, 'rj" "x', "Base.Axe")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_count_must_be_positive(self):
+        sup = FakeSupervisor()
+        for bad in (0, -5):
+            self.assertFalse(gm.add_item(sup, "rj", "Base.Axe", bad)["ok"], bad)
+        self.assertEqual(sup.sent, [])
+
+    def test_absurd_count_refused(self):
+        """A huge spawn is far more likely a typo than an intention."""
+        sup = FakeSupervisor()
+        self.assertFalse(gm.add_item(sup, "rj", "Base.Axe", 999999)["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_non_numeric_count_refused(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.add_item(sup, "rj", "Base.Axe", "many")["ok"])
+
+    def test_string_count_accepted(self):
+        sup = FakeSupervisor()
+        self.assertTrue(gm.add_item(sup, "rj", "Base.Axe", "3")["ok"])
+
+    def test_unknown_item_is_sent_for_the_server_to_judge(self):
+        sup = FakeSupervisor()
+        self.assertTrue(gm.add_item(sup, "rj", "SomeMod.NewThing")["ok"])
+
+    def test_requires_a_running_server(self):
+        sup = FakeSupervisor(alive=False)
+        self.assertFalse(gm.add_item(sup, "rj", "Base.Axe")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_is_logged_for_audit(self):
+        sup = FakeSupervisor()
+        gm.add_item(sup, "rj", "Base.Axe", 2)
+        self.assertTrue(any("gm: giving 2x Base.Axe" in text for text, _ in sup.emitted))
+
+    def test_failure_logged_as_error(self):
+        sup = FakeSupervisor(reply=(False, "nope"))
+        gm.add_item(sup, "rj", "Base.Axe")
+        self.assertTrue(any(stream == "error" for _, stream in sup.emitted))

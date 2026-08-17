@@ -435,6 +435,14 @@ class Handler(BaseHTTPRequestHandler):
             gm.add_xp(self.ctx.sup, body.get("username", ""), body.get("perk", ""), body.get("xp", 0))
         )
 
+    def api_add_item(self, params):
+        body = self._body()
+        self._json(
+            gm.add_item(
+                self.ctx.sup, body.get("username", ""), body.get("item", ""), body.get("count", 1)
+            )
+        )
+
     def api_logs(self, params):
         self._json(
             {
@@ -490,6 +498,7 @@ ROUTES = {
     ("POST", "/api/server/update"): Handler.api_server_update,
     ("GET", "/api/server/update"): Handler.api_server_update_status,
     ("POST", "/api/gm/addxp"): Handler.api_add_xp,
+    ("POST", "/api/gm/additem"): Handler.api_add_item,
     ("GET", "/api/game/items"): Handler.api_game_items,
     ("GET", "/api/game/perks"): Handler.api_game_perks,
     ("GET", "/api/profiles"): Handler.api_profiles,
