@@ -8,6 +8,8 @@ from pathlib import Path
 
 from pzctl import pzini
 
+from .helpers import read_raw
+
 # A CRLF sample, matching what the dedicated server actually writes on Windows.
 SAMPLE = (
     "# Server configuration\r\n"
@@ -31,7 +33,7 @@ class TempIniTest(unittest.TestCase):
         self.path.write_text(SAMPLE, encoding="utf-8", newline="")
 
     def raw(self) -> str:
-        return self.path.read_text(encoding="utf-8", newline="")
+        return read_raw(self.path)
 
 
 class ReadTests(TempIniTest):
@@ -124,7 +126,7 @@ class NewlineTests(TempIniTest):
         lf_path = self.dir / "lf.ini"
         lf_path.write_text("PVP=true\nMaxPlayers=32\n", encoding="utf-8", newline="")
         pzini.write(lf_path, {"PVP": "false"})
-        text = lf_path.read_text(encoding="utf-8", newline="")
+        text = read_raw(lf_path)
         self.assertEqual(text, "PVP=false\r\nMaxPlayers=32\r\n")
 
 
