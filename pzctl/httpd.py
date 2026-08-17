@@ -15,6 +15,7 @@ from . import (
     backup,
     liveconfig,
     logs,
+    modcheck,
     moderation,
     mods,
     optionmeta,
@@ -335,6 +336,12 @@ class Handler(BaseHTTPRequestHandler):
             )
         )
 
+    def api_mod_check_start(self, params):
+        self._json(modcheck.request(self.ctx.cfg, self.ctx.sup))
+
+    def api_mod_check_poll(self, params):
+        self._json(modcheck.poll(self.ctx.cfg))
+
     def api_whitelist(self, params):
         self._json(whitelist.status(self.ctx.cfg))
 
@@ -401,6 +408,8 @@ ROUTES = {
     ("POST", "/api/backups/run"): Handler.api_run_backup,
     ("POST", "/api/backups/restore"): Handler.api_restore_backup,
     ("POST", "/api/moderate"): Handler.api_moderate,
+    ("POST", "/api/mods/check"): Handler.api_mod_check_start,
+    ("GET", "/api/mods/check"): Handler.api_mod_check_poll,
     ("GET", "/api/whitelist"): Handler.api_whitelist,
     ("POST", "/api/whitelist/mode"): Handler.api_whitelist_mode,
     ("POST", "/api/whitelist/user"): Handler.api_whitelist_user,

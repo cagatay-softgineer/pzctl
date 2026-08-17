@@ -68,6 +68,10 @@ main{padding:16px;max-width:1500px;margin:0 auto}
 .hint{color:var(--dim);font-size:12px;margin:0 0 10px;font-family:var(--mono);word-break:break-all}
 .dirty{color:var(--amber);font-size:12px;font-family:var(--mono)}
 
+/* ── mod update check ──────────────────────────────────── */
+.modcheck{display:flex;gap:10px;align-items:center;margin:8px 0 12px}
+.hint.bad{color:var(--red)}
+
 /* ── moderation ────────────────────────────────────────── */
 .playerrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .playeracts{display:flex;gap:4px;flex-shrink:0}
