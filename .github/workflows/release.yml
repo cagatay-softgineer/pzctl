@@ -1,10 +1,14 @@
 name: release
 
-# Releases are driven by the version in pzctl/__init__.py, not by tagging.
-# Bump it in a PR; when that PR merges, this publishes. Merges that do not
-# change the version publish nothing, so docs and test PRs stay quiet - which
-# matters because the panel's update check would otherwise tell every user a
-# new version is available for a typo fix.
+# Every merge to master publishes a release.
+#
+# If the merged commit already changed __version__ (a deliberate MINOR or MAJOR
+# bump) that version is released as-is. Otherwise the patch number is bumped
+# automatically and committed back, so a release always happens.
+#
+# Note this means docs-only and test-only merges also publish, and the panel's
+# update check will announce them to users. Tying releases to __version__
+# changes instead would keep those quiet.
 on:
   push:
     branches: [master]
@@ -34,19 +38,38 @@ jobs:
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           echo "pzctl/__init__.py declares $VERSION"
 
-      # The version is the trigger, so an unchanged one means nothing to do.
-      - name: Has this version already been released?
+      # An explicit bump in the merged PR wins. Only when the current version
+      # is already published does this invent the next patch number.
+      - name: Bump the patch version if this one is already released
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
-            echo "release=skip" >> "$GITHUB_OUTPUT"
-            echo "${{ steps.version.outputs.tag }} is already released - nothing to do"
-          else
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "v$VERSION was set deliberately and is unreleased - releasing it"
             echo "release=go" >> "$GITHUB_OUTPUT"
-            echo "${{ steps.version.outputs.tag }} is new - releasing"
+            exit 0
           fi
+
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          NEXT="$MAJOR.$MINOR.$((PATCH + 1))"
+          echo "v$VERSION is already released - bumping to $NEXT"
+
+          sed -i -E "s/__version__ = \"[^\"]+\"/__version__ = \"$NEXT\"/" pzctl/__init__.py
+          grep -n "__version__" pzctl/__init__.py
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pzctl/__init__.py
+          git commit -m "Bump version to $NEXT [skip ci]"
+          git push origin HEAD:master
+
+          echo "version=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEXT" >> "$GITHUB_OUTPUT"
+          echo "release=go" >> "$GITHUB_OUTPUT"
 
       - name: Run tests
         if: steps.check.outputs.release == 'go'
@@ -61,7 +84,7 @@ jobs:
       - name: Build the drop-in zip
         if: steps.check.outputs.release == 'go'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.check.outputs.version || steps.version.outputs.version }}"
           STAGE="dist/pzctl-$VERSION"
           mkdir -p "$STAGE"
           cp -r pzctl "$STAGE/"
@@ -76,8 +99,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          TAG="${{ steps.version.outputs.tag }}"
+          VERSION="${{ steps.check.outputs.version || steps.version.outputs.version }}"
+          TAG="${{ steps.check.outputs.tag || steps.version.outputs.tag }}"
           git tag -a "$TAG" -m "pzctl $TAG"
           git push origin "$TAG"
           gh release create "$TAG" \

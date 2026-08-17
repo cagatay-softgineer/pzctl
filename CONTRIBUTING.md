@@ -69,31 +69,39 @@ a regression there quietly rewrites somebody's server config.
 - No new external dependencies without discussion first — the
   zero-dependency, standard-library-only design is intentional.
 
-## Cutting a release
+## Releases
 
-Releases are driven by the version, not by tagging. Bump `__version__` in
-`pzctl/__init__.py` as part of a PR; when that PR merges to `master`,
-`.github/workflows/release.yml` tags it, builds `pzctl-<version>.zip` and
-publishes the release.
+**Every merge to `master` publishes a release.** You do not tag anything.
 
-1. Decide the number. pzctl follows semantic versioning — see the policy at the
-   top of [CHANGELOG.md](CHANGELOG.md). Most changes are MINOR, because an
-   upgrade never rewrites a user's `pzctl.json`.
-2. Add a section to `CHANGELOG.md`
-3. Bump `__version__` in `pzctl/__init__.py`
-4. Merge
+`.github/workflows/release.yml` runs on each push to `master`:
 
-Merges that do **not** change `__version__` publish nothing. That is deliberate:
-the panel's update check would otherwise announce a new version to every user
-for a typo fix.
+- If the merged commit **changed** `__version__` in `pzctl/__init__.py`, that
+  version is released as-is. This is how you ship a MINOR or MAJOR version.
+- If it did not, the **patch** number is bumped automatically and committed back
+  to `master`, then released.
 
-To release without a code change, re-run the workflow manually from the Actions
-tab. It does nothing if the current version is already released.
+So for a feature, bump `__version__` yourself in the PR and add a `CHANGELOG.md`
+section. For a fix, merge and let it pick the next patch number.
 
-The zip contains only what a user drops into their server directory — the
+See the versioning policy at the top of [CHANGELOG.md](CHANGELOG.md) for what
+MAJOR, MINOR and PATCH mean here.
+
+### A consequence worth knowing
+
+Docs-only and test-only merges publish too, and the panel's update check tells
+users a new version is available. If that becomes noisy, changing the trigger to
+fire only when `__version__` changes would keep those merges quiet — the
+workflow already handles that case.
+
+### What ships
+
+The zip contains only what a user drops into their server directory: the
 `pzctl/` package, `PZ-Control.bat`, `pzctl.json.example`, `README.md`,
-`CHANGELOG.md` and `LICENSE`. It deliberately excludes `tests/`, `.github/` and
+`CHANGELOG.md` and `LICENSE`. It excludes `tests/`, `.github/` and
 `pzctl.json`, the last of which holds admin and RCON passwords.
+
+Tests and the panel JavaScript check both run before anything is published, so a
+broken `master` cannot produce a release.
 
 There is no PyPI package. `pzctl/config.py` derives `SERVER_DIR` from the
 package's own location on disk, and `pzctl/mods.py` walks up from there to find
