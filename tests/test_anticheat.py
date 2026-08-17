@@ -9,6 +9,8 @@ from pathlib import Path
 from pzctl import anticheat, pzini
 from pzctl.config import Config
 
+from .helpers import read_raw
+
 
 class AntiCheatTestCase(unittest.TestCase):
     def setUp(self) -> None:
@@ -112,9 +114,9 @@ class WriteTests(AntiCheatTestCase):
         self.assertFalse(result["ok"])
 
     def test_a_rejected_write_changes_nothing(self):
-        before = self.cfg.ini_path.read_text(encoding="utf-8", newline="")
+        before = read_raw(self.cfg.ini_path)
         anticheat.write(self.cfg, {99: False})
-        self.assertEqual(self.cfg.ini_path.read_text(encoding="utf-8", newline=""), before)
+        self.assertEqual(read_raw(self.cfg.ini_path), before)
 
     def test_other_settings_untouched(self):
         anticheat.write(self.cfg, {12: False})
