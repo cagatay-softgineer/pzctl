@@ -94,6 +94,18 @@
             Use <b>none</b> to remove elevated access.</p>
         </div>
         <div class="card">
+          <div class="card-head"><h2>Give item</h2><span class="hint" id="itemCount"></span></div>
+          <form class="modform" id="itemForm">
+            <input id="itemUser" placeholder="username" autocomplete="off" spellcheck="false">
+            <input id="itemSearch" placeholder="search items, e.g. axe" autocomplete="off" spellcheck="false">
+            <input id="itemQty" type="number" min="1" value="1" title="how many">
+            <button class="btn" type="submit">Give</button>
+          </form>
+          <ul id="itemResults" class="plain"></ul>
+          <p class="hint">Search by the name you see in game. The id sent is shown beside each
+            result. No pictures &mdash; a dedicated server ships no item textures.</p>
+        </div>
+        <div class="card">
           <div class="card-head"><h2>Grant XP</h2></div>
           <form class="modform" id="xpForm">
             <input id="xpUser" placeholder="username" autocomplete="off" spellcheck="false">

@@ -1151,6 +1151,81 @@ $("#modCheckBtn").addEventListener("click", async () => {
   }, 3000);
 });
 
+/* ── give item ─────────────────────────────────────────────── */
+
+let itemPick = null;
+let itemTimer = null;
+
+// 5000+ items, so search server-side rather than shipping the catalog.
+async function searchItems() {
+  const term = $("#itemSearch").value.trim();
+  const list = $("#itemResults");
+  if (!term) {
+    list.innerHTML = "";
+    $("#itemCount").textContent = "";
+    return;
+  }
+  const data = await api("/api/game/items?limit=12&search=" + encodeURIComponent(term));
+  list.innerHTML = "";
+  if (!data.ok) {
+    $("#itemCount").textContent = data.error || "unavailable";
+    return;
+  }
+  $("#itemCount").textContent =
+    data.total + " match" + (data.total === 1 ? "" : "es") +
+    (data.total > data.items.length ? " (showing " + data.items.length + ")" : "");
+
+  data.items.forEach((entry) => {
+    const li = document.createElement("li");
+    li.className = "playerrow";
+    const label = document.createElement("span");
+    label.textContent = entry.name;
+    const id = document.createElement("small");
+    // The raw id stays visible, as in the INI and Sandbox editors.
+    id.textContent = entry.id;
+    label.appendChild(id);
+    li.appendChild(label);
+
+    const pick = document.createElement("button");
+    pick.type = "button";
+    pick.className = "btn tiny " + (itemPick === entry.id ? "go" : "ghost");
+    pick.textContent = itemPick === entry.id ? "selected" : "select";
+    pick.addEventListener("click", () => {
+      itemPick = entry.id;
+      $("#itemSearch").value = entry.name;
+      $("#itemCount").textContent = "selected " + entry.id;
+      list.innerHTML = "";
+    });
+    li.appendChild(pick);
+    list.appendChild(li);
+  });
+}
+
+$("#itemSearch").addEventListener("input", () => {
+  itemPick = null;
+  clearTimeout(itemTimer);
+  itemTimer = setTimeout(searchItems, 250);
+});
+
+$("#itemForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  if (!itemPick) return toast("pick an item from the search results first", true);
+  const res = await api("/api/gm/additem", {
+    method: "POST",
+    body: {
+      username: $("#itemUser").value,
+      item: itemPick,
+      count: Number($("#itemQty").value),
+    },
+  });
+  toast(
+    res.ok
+      ? res.count + "x " + res.item + " to " + res.username + " — " + (res.reply || "sent")
+      : res.error,
+    !res.ok
+  );
+});
+
 /* ── grant XP ──────────────────────────────────────────────── */
 
 // Skills are read from the game install, never hardcoded: the ids differ
