@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import rcon
+from . import logconfig
 from .config import LOG_DIR, SERVER_DIR, Config
 
 STOPPED = "stopped"
@@ -160,6 +161,7 @@ class Supervisor:
         args.extend(str(a) for a in (cfg.get("java.extra_args") or []) if str(a).strip())
         args += ["-cp", "java/;java/projectzomboid.jar", "zombie.network.GameServer"]
         args += ["-statistic", "0", "-servername", str(cfg.get("server_name"))]
+        args += logconfig.launch_args(cfg)
         if not cfg.get("steam"):
             args.append("-nosteam")
         cache = (cfg.get("cache_dir") or "").strip()

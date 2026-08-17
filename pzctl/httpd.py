@@ -16,6 +16,7 @@ from . import (
     backup,
     crashdiag,
     liveconfig,
+    logconfig,
     logs,
     modcheck,
     moderation,
@@ -374,6 +375,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._error(400, "upgrade requires confirm: true")
         self._json(upgrade.apply(self.ctx.sup))
 
+    def api_log_level(self, params):
+        body = self._body()
+        self._json(logconfig.set_level(self.ctx.sup, body.get("type", ""), body.get("level", "")))
+
     def api_logs(self, params):
         self._json(
             {
@@ -433,6 +438,7 @@ ROUTES = {
     ("POST", "/api/whitelist/user"): Handler.api_whitelist_user,
     ("GET", "/api/updates"): Handler.api_check_updates,
     ("POST", "/api/updates/apply"): Handler.api_upgrade,
+    ("POST", "/api/logs/level"): Handler.api_log_level,
     ("GET", "/api/logs"): Handler.api_logs,
     ("GET", "/api/logs/tail"): Handler.api_log_tail,
     ("POST", "/api/rcon/test"): Handler.api_rcon_test,
