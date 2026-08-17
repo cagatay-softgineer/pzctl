@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import backup, liveconfig, logs, mods, optionmeta, pzini, rcon, sandbox
+from . import backup, liveconfig, logs, moderation, mods, optionmeta, pzini, rcon, sandbox
 from .config import Config
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
@@ -312,6 +312,18 @@ class Handler(BaseHTTPRequestHandler):
             )
         )
 
+    def api_moderate(self, params):
+        body = self._body()
+        self._json(
+            moderation.act(
+                self.ctx.sup,
+                body.get("action", ""),
+                body.get("target", ""),
+                body.get("reason", ""),
+                bool(body.get("ban_ip")),
+            )
+        )
+
     def api_logs(self, params):
         self._json(
             {
@@ -362,6 +374,7 @@ ROUTES = {
     ("GET", "/api/backups/inspect"): Handler.api_inspect_backup,
     ("POST", "/api/backups/run"): Handler.api_run_backup,
     ("POST", "/api/backups/restore"): Handler.api_restore_backup,
+    ("POST", "/api/moderate"): Handler.api_moderate,
     ("GET", "/api/logs"): Handler.api_logs,
     ("GET", "/api/logs/tail"): Handler.api_log_tail,
     ("POST", "/api/rcon/test"): Handler.api_rcon_test,
