@@ -15,7 +15,9 @@ from . import __version__
 from . import (
     anticheat,
     backup,
+    backupaudit,
     crashdiag,
+    drift,
     gamedata,
     gm,
     liveconfig,
@@ -491,6 +493,12 @@ class Handler(BaseHTTPRequestHandler):
     def api_mod_seen(self, params):
         self._json(modlint.snapshot(self.ctx.cfg))
 
+    def api_drift(self, params):
+        self._json(drift.check(self.ctx.cfg, self.ctx.sup))
+
+    def api_backup_audit(self, params):
+        self._json(backupaudit.audit(self.ctx.cfg))
+
     def api_logs(self, params):
         self._json(
             {
@@ -537,6 +545,8 @@ ROUTES = {
     ("POST", "/api/config/mods"): Handler.api_set_mods,
     ("GET", "/api/config/launcher"): Handler.api_get_launcher,
     ("POST", "/api/config/launcher"): Handler.api_set_launcher,
+    ("GET", "/api/config/drift"): Handler.api_drift,
+    ("GET", "/api/backups/audit"): Handler.api_backup_audit,
     ("GET", "/api/backups"): Handler.api_backups,
     ("GET", "/api/backups/inspect"): Handler.api_inspect_backup,
     ("POST", "/api/backups/run"): Handler.api_run_backup,
