@@ -28,6 +28,9 @@ def defaults() -> dict:
         "admin_username": "admin",
         "admin_password": "",
         "steam": True,
+        # Empty means "find steamcmd on PATH". App 380870 is the dedicated server.
+        "steamcmd_path": "",
+        "steam_app_id": "380870",
         "java": {
             "xms": "16g",
             "xmx": "16g",

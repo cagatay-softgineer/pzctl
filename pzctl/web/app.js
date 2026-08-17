@@ -872,6 +872,56 @@ $("#modForm").addEventListener("submit", async (ev) => {
   $("#modTarget").value = "";
 });
 
+/* ── server update ─────────────────────────────────────────── */
+
+let suTimer = null;
+
+async function pollServerUpdate() {
+  const s = await api("/api/server/update");
+  const el = $("#suState");
+  if (s.running) {
+    el.textContent = "updating... (" + Math.round(s.elapsed_sec || 0) + "s) — see console";
+    return false;
+  }
+  if (s.result) {
+    el.textContent = s.result.ok ? "update finished" : (s.result.error || "update failed");
+  } else {
+    el.textContent = "";
+  }
+  return true;
+}
+
+$("#suRun").addEventListener("click", async () => {
+  if (!window.confirm(
+    "Update the game server via SteamCMD?
+
+" +
+    "The server must be stopped. A backup is taken first.
+" +
+    "Your world, config and mods are not touched — only the server files."
+  )) return;
+
+  const btn = $("#suRun");
+  btn.disabled = true;
+  const res = await api("/api/server/update", { method: "POST", body: { confirm: true } });
+  if (!res.ok) {
+    btn.disabled = false;
+    $("#suState").textContent = "";
+    return toast(res.error || "could not start the update", true);
+  }
+  toast("update started — progress in the Dashboard console");
+  if (res.safety_backup) toast("backed up as " + res.safety_backup);
+
+  if (suTimer) clearInterval(suTimer);
+  suTimer = setInterval(async () => {
+    if (await pollServerUpdate()) {
+      clearInterval(suTimer);
+      suTimer = null;
+      btn.disabled = false;
+    }
+  }, 3000);
+});
+
 /* ── anti-cheat ────────────────────────────────────────────── */
 
 async function loadAntiCheat() {

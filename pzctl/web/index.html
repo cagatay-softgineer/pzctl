@@ -255,6 +255,19 @@
           </div>
         </div>
         <div class="card">
+          <div class="card-head">
+            <h2>Server update</h2>
+            <span class="hint" id="suState"></span>
+            <button class="btn" id="suRun">Update via SteamCMD</button>
+          </div>
+          <div class="fields">
+            <label>steamcmd path (blank = find on PATH)<input data-cfg="steamcmd_path" placeholder="steamcmd"></label>
+          </div>
+          <p class="hint">Updates the game server itself. The server must be stopped, a backup is
+            taken first, and progress appears in the Dashboard console. Leaves your world,
+            config and mods alone.</p>
+        </div>
+        <div class="card">
           <div class="card-head"><h2>Logging</h2></div>
           <div class="fields">
             <label>Enable categories (-debuglog)<textarea data-cfg="logging.debug" rows="3" spellcheck="false" placeholder="one per line, e.g. Network"></textarea></label>
