@@ -272,7 +272,10 @@ class OffsiteTests(TempBackupTest):
     def test_unreachable_destination_is_reported_not_raised(self):
         """A missing share must not turn a good backup into a failed one."""
         archive = self.make_archive("servertest-1.zip", 1_000_000)
-        self.cfg.set("backup.secondary_dir", "\\nosuchhost\share")
+        blocker = self.dir / "not-a-directory"
+        blocker.write_text("i am a file", encoding="utf-8")
+        # A directory cannot be created underneath a regular file, on any platform.
+        self.cfg.set("backup.secondary_dir", str(blocker / "share"))
         result = backup.copy_offsite(self.cfg, archive)
         self.assertFalse(result["ok"])
         self.assertIn("could not copy", result["error"])
@@ -309,7 +312,9 @@ class OffsiteTests(TempBackupTest):
     def test_backup_still_succeeds_when_the_copy_fails(self):
         """The primary archive is what matters; the second copy is a bonus."""
         self.populate_save()
-        self.cfg.set("backup.secondary_dir", "\\nosuchhost\share")
+        blocker = self.dir / "not-a-directory"
+        blocker.write_text("i am a file", encoding="utf-8")
+        self.cfg.set("backup.secondary_dir", str(blocker / "share"))
         result = backup.run(self.cfg)
         self.assertTrue(result["ok"])
         self.assertFalse(result["offsite"]["ok"])
