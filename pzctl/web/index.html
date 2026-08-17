@@ -290,7 +290,12 @@
       <p class="hint" id="logDir"></p>
       <p class="hint">These are the game's own logs, separate from the pzctl console on
         the Dashboard. Read-only, showing the end of each file.</p>
-      <div class="logpick"><select id="logSelect"></select><span class="hint" id="logMeta"></span></div>
+      <div class="logpick">
+        <select id="logSelect"></select>
+        <button class="btn ghost tiny" id="diagBtn">diagnose crash</button>
+        <span class="hint" id="logMeta"></span>
+      </div>
+      <div id="diagResult" class="diag"></div>
       <div id="logView" class="console"></div>
     </div>
   </section>

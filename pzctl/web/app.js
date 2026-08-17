@@ -1015,6 +1015,56 @@ async function showLog() {
   if (atBottom) view.scrollTop = view.scrollHeight;
 }
 
+$("#diagBtn").addEventListener("click", async () => {
+  const box = $("#diagResult");
+  box.textContent = "reading the logs...";
+  box.className = "diag on";
+  const data = await api("/api/diagnose");
+  box.innerHTML = "";
+
+  if (!data.ok) {
+    box.textContent = data.error || "could not read the logs";
+    return;
+  }
+
+  const head = document.createElement("p");
+  head.className = "hint";
+  const shown =
+    data.error_count > data.errors.length
+      ? data.errors.length + " of " + data.error_count + " error blocks"
+      : data.error_count + " error block(s)";
+  head.textContent = "scanned " + data.scanned.join(", ") + " — showing " + shown;
+  box.appendChild(head);
+
+  if (data.suspects.length) {
+    const title = document.createElement("p");
+    title.innerHTML = "<b>Mods named in the logs</b>";
+    box.appendChild(title);
+    const list = document.createElement("ul");
+    list.className = "plain";
+    data.suspects.forEach((s) => {
+      const li = document.createElement("li");
+      const where = s.in_load_order ? "in your load order" : "not in your current load order";
+      li.textContent = s.mod + " — " + s.evidence.join("; ") + " (" + where + ")";
+      list.appendChild(li);
+    });
+    box.appendChild(list);
+  } else {
+    const none = document.createElement("p");
+    none.className = "hint";
+    // Saying nothing is better than naming a mod the log never mentioned.
+    none.textContent = data.note || "No mod is named in the logs.";
+    box.appendChild(none);
+  }
+
+  data.errors.forEach((e) => {
+    const pre = document.createElement("pre");
+    pre.className = "cmdpre";
+    pre.textContent = e.log + ":" + e.line + "\n" + e.text;
+    box.appendChild(pre);
+  });
+});
+
 $("#logSelect").addEventListener("change", showLog);
 $("#logRefresh").addEventListener("click", showLog);
 $("#logFollow").addEventListener("change", (ev) => {

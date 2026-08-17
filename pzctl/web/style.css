@@ -68,6 +68,12 @@ main{padding:16px;max-width:1500px;margin:0 auto}
 .hint{color:var(--dim);font-size:12px;margin:0 0 10px;font-family:var(--mono);word-break:break-all}
 .dirty{color:var(--amber);font-size:12px;font-family:var(--mono)}
 
+/* ── crash diagnosis ───────────────────────────────────── */
+.diag{display:none}
+.diag.on{display:block;margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);
+  border-radius:6px;background:var(--card2,transparent)}
+.diag .cmdpre{margin-top:8px;max-height:220px;overflow:auto}
+
 /* ── mod update check ──────────────────────────────────── */
 .modcheck{display:flex;gap:10px;align-items:center;margin:8px 0 12px}
 .hint.bad{color:var(--red)}
