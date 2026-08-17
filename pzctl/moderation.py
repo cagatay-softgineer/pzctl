@@ -26,12 +26,12 @@ IPV4_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
 ACTIONS = ("kick", "ban", "unban", "banid", "unbanid", "banip", "unbanip")
 
 
-def _clean_text(value: str) -> str:
+def clean_text(value: str) -> str:
     """Strip characters that would break out of a quoted argument."""
     return re.sub(r'["\r\n]', "", str(value or "")).strip()
 
 
-def _validate_name(name: str) -> str | None:
+def validate_name(name: str) -> str | None:
     if not name:
         return "no player name given"
     if len(name) > 64:
@@ -56,13 +56,13 @@ def _validate_ip(value: str) -> str | None:
 def build_command(action: str, target: str, reason: str = "", ban_ip: bool = False) -> tuple[str | None, str | None]:
     """Return (command, error). Exactly one of the two is set."""
     target = str(target or "").strip()
-    reason = _clean_text(reason)
+    reason = clean_text(reason)
 
     if action not in ACTIONS:
         return None, f"unknown action {action!r}"
 
     if action in ("kick", "ban", "unban"):
-        problem = _validate_name(target)
+        problem = validate_name(target)
         if problem:
             return None, problem
         if action == "unban":
@@ -100,7 +100,7 @@ def act(supervisor, action: str, target: str, reason: str = "", ban_ip: bool = F
     # command itself fails or the connection drops mid-request.
     audit = f"moderation: {action} {target!r}"
     if reason:
-        audit += f" - reason: {_clean_text(reason)}"
+        audit += f" - reason: {clean_text(reason)}"
     if action == "ban" and ban_ip:
         audit += " (with IP ban)"
     supervisor.emit(audit, "pzctl")

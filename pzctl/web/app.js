@@ -847,6 +847,67 @@ $("#modForm").addEventListener("submit", async (ev) => {
   $("#modTarget").value = "";
 });
 
+/* ── whitelist ─────────────────────────────────────────────── */
+
+async function refreshWhitelist() {
+  const data = await api("/api/whitelist");
+  const state = $("#wlState");
+  if (!data.ok) {
+    state.textContent = data.error || "unavailable";
+    $("#wlEnabled").disabled = true;
+    return;
+  }
+  $("#wlEnabled").disabled = false;
+  $("#wlEnabled").checked = data.enabled;
+  state.textContent = data.enabled
+    ? "on — only whitelisted users can join"
+    : "off — the server is open to anyone";
+}
+
+$("#wlEnabled").addEventListener("change", async (ev) => {
+  const enabled = ev.target.checked;
+  const res = await api("/api/whitelist/mode", {
+    method: "POST",
+    body: { enabled: enabled },
+  });
+  if (!res.ok) {
+    toast(res.error || "could not change whitelist mode", true);
+    return refreshWhitelist();
+  }
+  // The file is always written; the live push may still have been refused.
+  const live = res.live;
+  const suffix = !live
+    ? " — restart the server to apply"
+    : live.ok
+    ? " — applied live"
+    : " — saved, but live apply failed: " + (live.error || "see log");
+  toast("whitelist " + (enabled ? "enforced" : "disabled") + suffix, live && !live.ok);
+  refreshWhitelist();
+});
+
+async function whitelistUser(action) {
+  const username = $("#wlUser").value.trim();
+  if (!username) return toast("enter a username", true);
+  const password = $("#wlPass").value;
+  if (action === "add" && !password) return toast("a password is required to add a user", true);
+
+  const res = await api("/api/whitelist/user", {
+    method: "POST",
+    body: { action: action, username: username, password: password },
+  });
+  if (res.ok) {
+    $("#wlUser").value = "";
+    $("#wlPass").value = "";
+  }
+  toast(res.ok ? action + " " + username + " — " + (res.reply || "sent") : res.error, !res.ok);
+}
+
+$("#wlForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  whitelistUser("add");
+});
+$("#wlRemove").addEventListener("click", () => whitelistUser("remove"));
+
 /* ── game logs ─────────────────────────────────────────────── */
 
 let logTimer = null;
@@ -919,4 +980,5 @@ $("#logFollow").addEventListener("change", (ev) => {
 if (!TOKEN) askToken();
 loadHistory().then(openStream);
 refreshStatus();
+refreshWhitelist();
 setInterval(refreshStatus, 3000);

@@ -342,14 +342,14 @@ class Supervisor:
 
     # -- commands --------------------------------------------------------
 
-    def _send_stdin(self, cmd: str) -> bool:
+    def _send_stdin(self, cmd: str, echo_as: str | None = None) -> bool:
         proc = self.proc
         if proc is None or proc.poll() is not None or proc.stdin is None:
             return False
         try:
             proc.stdin.write(cmd + "\n")
             proc.stdin.flush()
-            self.emit(f"> {cmd}", "input")
+            self.emit(f"> {echo_as if echo_as is not None else cmd}", "input")
             return True
         except OSError:
             return False
@@ -365,19 +365,27 @@ class Supervisor:
     def rcon_ready(self) -> bool:
         return bool(self.cfg.get("rcon.enabled") and (self.cfg.get("rcon.password") or "").strip())
 
-    def send_command(self, cmd: str, prefer: str = "auto") -> tuple[bool, str]:
-        """Run a console command. `prefer` is auto | rcon | stdin."""
+    def send_command(
+        self, cmd: str, prefer: str = "auto", echo_as: str | None = None
+    ) -> tuple[bool, str]:
+        """Run a console command. `prefer` is auto | rcon | stdin.
+
+        `echo_as` replaces the command in the console echo and the on-disk log.
+        Commands that carry a secret - `adduser` takes a player's password -
+        must pass a redacted form, or it lands in the log in cleartext.
+        """
         cmd = cmd.strip()
         if not cmd:
             return False, "empty command"
         if not self.is_alive():
             return False, "server is not running"
 
+        shown = echo_as if echo_as is not None else cmd
         use_rcon = prefer == "rcon" or (prefer == "auto" and self.rcon_ready())
         if use_rcon:
             try:
                 reply = self._rcon(cmd)
-                self.emit(f"> {cmd}", "input")
+                self.emit(f"> {shown}", "input")
                 for line in (reply or "(no output)").splitlines():
                     self.emit(line, "rcon")
                 self._note_players(cmd, reply)
@@ -387,7 +395,7 @@ class Supervisor:
                     return False, f"rcon failed: {exc}"
                 self.emit(f"rcon unavailable ({exc}) - falling back to console", "pzctl")
 
-        if self._send_stdin(cmd):
+        if self._send_stdin(cmd, echo_as=shown):
             return True, "sent to server console"
         return False, "could not write to server console"
 
