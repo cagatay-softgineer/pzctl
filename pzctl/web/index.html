@@ -80,6 +80,21 @@
             Every action is written to the console log.</p>
         </div>
         <div class="card">
+          <div class="card-head">
+            <h2>Whitelist</h2>
+            <label class="check"><input type="checkbox" id="wlEnabled"> enforce</label>
+          </div>
+          <p class="hint" id="wlState">checking...</p>
+          <form class="modform" id="wlForm">
+            <input id="wlUser" placeholder="username" autocomplete="off" spellcheck="false">
+            <input id="wlPass" type="password" placeholder="password" autocomplete="new-password">
+            <button class="btn" type="submit">Add</button>
+            <button class="btn ghost" type="button" id="wlRemove">Remove</button>
+          </form>
+          <p class="hint">Adding a user sends their password to the server over RCON.
+            It is not written to the log.</p>
+        </div>
+        <div class="card">
           <div class="card-head"><h2>Upcoming</h2></div>
           <ul id="scheduleList" class="plain">nothing scheduled</ul>
         </div>

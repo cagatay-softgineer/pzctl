@@ -11,7 +11,18 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import backup, liveconfig, logs, moderation, mods, optionmeta, pzini, rcon, sandbox
+from . import (
+    backup,
+    liveconfig,
+    logs,
+    moderation,
+    mods,
+    optionmeta,
+    pzini,
+    rcon,
+    sandbox,
+    whitelist,
+)
 from .config import Config
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
@@ -324,6 +335,21 @@ class Handler(BaseHTTPRequestHandler):
             )
         )
 
+    def api_whitelist(self, params):
+        self._json(whitelist.status(self.ctx.cfg))
+
+    def api_whitelist_mode(self, params):
+        self._json(
+            whitelist.set_mode(self.ctx.cfg, self.ctx.sup, bool(self._body().get("enabled")))
+        )
+
+    def api_whitelist_user(self, params):
+        body = self._body()
+        username = body.get("username", "")
+        if body.get("action") == "remove":
+            return self._json(whitelist.remove_user(self.ctx.sup, username))
+        self._json(whitelist.add_user(self.ctx.sup, username, body.get("password", "")))
+
     def api_logs(self, params):
         self._json(
             {
@@ -375,6 +401,9 @@ ROUTES = {
     ("POST", "/api/backups/run"): Handler.api_run_backup,
     ("POST", "/api/backups/restore"): Handler.api_restore_backup,
     ("POST", "/api/moderate"): Handler.api_moderate,
+    ("GET", "/api/whitelist"): Handler.api_whitelist,
+    ("POST", "/api/whitelist/mode"): Handler.api_whitelist_mode,
+    ("POST", "/api/whitelist/user"): Handler.api_whitelist_user,
     ("GET", "/api/logs"): Handler.api_logs,
     ("GET", "/api/logs/tail"): Handler.api_log_tail,
     ("POST", "/api/rcon/test"): Handler.api_rcon_test,
