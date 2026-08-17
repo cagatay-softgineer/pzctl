@@ -64,6 +64,22 @@
           <ul id="playerList" class="plain">no data yet</ul>
         </div>
         <div class="card">
+          <div class="card-head"><h2>Moderation</h2></div>
+          <form class="modform" id="modForm">
+            <select id="modAction">
+              <option value="unban">unban player</option>
+              <option value="banid">ban Steam ID</option>
+              <option value="unbanid">unban Steam ID</option>
+              <option value="banip">ban IP</option>
+              <option value="unbanip">unban IP</option>
+            </select>
+            <input id="modTarget" placeholder="name, Steam ID or IP" autocomplete="off" spellcheck="false">
+            <button class="btn" type="submit">Apply</button>
+          </form>
+          <p class="hint">Kick and ban for players who are online are on the list above.
+            Every action is written to the console log.</p>
+        </div>
+        <div class="card">
           <div class="card-head"><h2>Upcoming</h2></div>
           <ul id="scheduleList" class="plain">nothing scheduled</ul>
         </div>

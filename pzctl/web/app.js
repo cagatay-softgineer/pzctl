@@ -97,7 +97,15 @@ async function refreshStatus() {
   if (st.player_names && st.player_names.length) {
     st.player_names.forEach((name) => {
       const li = document.createElement("li");
-      li.textContent = name;
+      li.className = "playerrow";
+      const label = document.createElement("span");
+      label.textContent = name;
+      li.appendChild(label);
+      const actions = document.createElement("span");
+      actions.className = "playeracts";
+      actions.appendChild(modButton("kick", name));
+      actions.appendChild(modButton("ban", name));
+      li.appendChild(actions);
       players.appendChild(li);
     });
   } else {
@@ -798,6 +806,45 @@ $("#backupNow").addEventListener("click", async (ev) => {
   ev.target.textContent = "Back up now";
   toast(res.ok ? "backup " + res.name + " (" + res.size_mb + " MB)" : res.error, !res.ok);
   LOADERS.backups();
+});
+
+/* ── moderation ────────────────────────────────────────────── */
+
+function modButton(action, name) {
+  const btn = document.createElement("button");
+  btn.className = "btn tiny " + (action === "ban" ? "danger" : "ghost");
+  btn.textContent = action;
+  btn.addEventListener("click", () => moderate(action, name, btn));
+  return btn;
+}
+
+async function moderate(action, target, button) {
+  // A ban outlives the session and is awkward to reverse, so it is confirmed;
+  // a kick is not, since the player can simply rejoin.
+  let banIp = false;
+  if (action === "ban") {
+    if (!window.confirm('Ban "' + target + '" from the server?')) return;
+    banIp = window.confirm("Also ban their IP address?\n\nOK = ban IP too, Cancel = account only.");
+  }
+  const reason = window.prompt("Reason (optional, recorded in the log):", "") || "";
+
+  if (button) button.disabled = true;
+  const res = await api("/api/moderate", {
+    method: "POST",
+    body: { action: action, target: target, reason: reason, ban_ip: banIp },
+  });
+  if (button) button.disabled = false;
+
+  toast(res.ok ? action + " " + target + " - " + (res.reply || "sent") : res.error || "failed", !res.ok);
+  refreshStatus();
+}
+
+$("#modForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const target = $("#modTarget").value.trim();
+  if (!target) return toast("enter a name, Steam ID or IP", true);
+  await moderate($("#modAction").value, target, null);
+  $("#modTarget").value = "";
 });
 
 /* ── game logs ─────────────────────────────────────────────── */
