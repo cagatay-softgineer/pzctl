@@ -456,6 +456,31 @@ class Handler(BaseHTTPRequestHandler):
         body = self._body()
         self._json(gm.add_vehicle(self.ctx.sup, body.get("script", ""), body.get("target", "")))
 
+    def api_gm_teleport(self, params):
+        b = self._body()
+        self._json(gm.teleport(self.ctx.sup, b.get("who", ""), b.get("destination", "")))
+
+    def api_gm_weather(self, params):
+        b = self._body()
+        self._json(gm.weather(self.ctx.sup, b.get("event", ""), b.get("value")))
+
+    def api_gm_horde(self, params):
+        b = self._body()
+        if b.get("confirm") is not True:
+            return self._error(400, "spawning a horde requires confirm: true")
+        self._json(gm.create_horde(self.ctx.sup, b.get("username", ""), b.get("count", 1)))
+
+    def api_gm_state(self, params):
+        b = self._body()
+        self._json(
+            gm.player_state(
+                self.ctx.sup, b.get("state", ""), b.get("username", ""), bool(b.get("enabled"))
+            )
+        )
+
+    def api_gm_broadcast(self, params):
+        self._json(gm.broadcast(self.ctx.sup, self._body().get("message", "")))
+
     def api_logs(self, params):
         self._json(
             {
@@ -515,6 +540,11 @@ ROUTES = {
     ("GET", "/api/game/items"): Handler.api_game_items,
     ("GET", "/api/game/vehicles"): Handler.api_game_vehicles,
     ("POST", "/api/gm/addvehicle"): Handler.api_add_vehicle,
+    ("POST", "/api/gm/teleport"): Handler.api_gm_teleport,
+    ("POST", "/api/gm/weather"): Handler.api_gm_weather,
+    ("POST", "/api/gm/horde"): Handler.api_gm_horde,
+    ("POST", "/api/gm/state"): Handler.api_gm_state,
+    ("POST", "/api/gm/broadcast"): Handler.api_gm_broadcast,
     ("GET", "/api/game/perks"): Handler.api_game_perks,
     ("GET", "/api/profiles"): Handler.api_profiles,
     ("POST", "/api/profiles/switch"): Handler.api_switch_profile,

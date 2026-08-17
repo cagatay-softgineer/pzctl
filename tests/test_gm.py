@@ -239,3 +239,142 @@ class AddVehicleTests(unittest.TestCase):
         sup = FakeSupervisor()
         gm.add_vehicle(sup, "Base.Car", "rj")
         self.assertTrue(any("gm: spawning Base.Car" in text for text, _ in sup.emitted))
+
+
+class TeleportTests(unittest.TestCase):
+    def test_player_to_player(self):
+        sup = FakeSupervisor()
+        self.assertTrue(gm.teleport(sup, "rj", "bob")["ok"])
+        self.assertEqual(sup.sent, ['teleport "rj" "bob"'])
+
+    def test_to_coordinates_uses_teleportto(self):
+        """teleportto is a different command taking only a position."""
+        sup = FakeSupervisor()
+        result = gm.teleport(sup, "rj", "10700,9200,0")
+        self.assertTrue(result["coords"])
+        self.assertEqual(sup.sent, ["teleportto 10700,9200,0"])
+
+    def test_malformed_coordinates_refused(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.teleport(sup, "rj", "1,2")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_injection_refused(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.teleport(sup, 'rj" "x', "bob")["ok"])
+        self.assertFalse(gm.teleport(sup, "rj", 'bob" ; quit')["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_requires_running_server(self):
+        self.assertFalse(gm.teleport(FakeSupervisor(alive=False), "rj", "bob")["ok"])
+
+
+class WeatherTests(unittest.TestCase):
+    def test_simple_events(self):
+        for event in gm.SIMPLE_EVENTS:
+            sup = FakeSupervisor()
+            self.assertTrue(gm.weather(sup, event)["ok"], event)
+            self.assertEqual(sup.sent, [event])
+
+    def test_rain_takes_an_intensity(self):
+        sup = FakeSupervisor()
+        self.assertTrue(gm.weather(sup, "startrain", 50)["ok"])
+        self.assertEqual(sup.sent, ['startrain "50"'])
+
+    def test_documented_ranges_enforced(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.weather(sup, "startrain", 0)["ok"])
+        self.assertFalse(gm.weather(sup, "startrain", 101)["ok"])
+        self.assertFalse(gm.weather(sup, "startstorm", 25)["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_missing_value(self):
+        self.assertFalse(gm.weather(FakeSupervisor(), "startrain")["ok"])
+
+    def test_targeted_events_take_a_player(self):
+        sup = FakeSupervisor()
+        self.assertTrue(gm.weather(sup, "lightning", "rj")["ok"])
+        self.assertEqual(sup.sent, ['lightning "rj"'])
+
+    def test_targeted_event_injection_refused(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.weather(sup, "thunder", 'rj" ; quit')["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_unknown_event(self):
+        self.assertFalse(gm.weather(FakeSupervisor(), "tornado")["ok"])
+
+
+class HordeTests(unittest.TestCase):
+    def test_spawns(self):
+        sup = FakeSupervisor()
+        self.assertTrue(gm.create_horde(sup, "rj", 10)["ok"])
+        self.assertEqual(sup.sent, ['createhorde 10 "rj"'])
+
+    def test_bounded(self):
+        """Zombies cannot be un-spawned, so the cap is deliberate."""
+        sup = FakeSupervisor()
+        self.assertFalse(gm.create_horde(sup, "rj", 0)["ok"])
+        self.assertFalse(gm.create_horde(sup, "rj", gm.MAX_HORDE + 1)["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_cap_error_explains_why(self):
+        result = gm.create_horde(FakeSupervisor(), "rj", 10000)
+        self.assertIn("cannot be undone", result["error"])
+
+    def test_injection_refused(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.create_horde(sup, 'rj" "x', 5)["ok"])
+        self.assertEqual(sup.sent, [])
+
+
+class PlayerStateTests(unittest.TestCase):
+    def test_enable(self):
+        sup = FakeSupervisor()
+        self.assertTrue(gm.player_state(sup, "godmode", "rj", True)["ok"])
+        self.assertEqual(sup.sent, ['godmode "rj" -true'])
+
+    def test_disable(self):
+        sup = FakeSupervisor()
+        gm.player_state(sup, "noclip", "rj", False)
+        self.assertEqual(sup.sent, ['noclip "rj" -false'])
+
+    def test_all_documented_states(self):
+        for state in gm.STATE_COMMANDS:
+            sup = FakeSupervisor()
+            self.assertTrue(gm.player_state(sup, state, "rj", True)["ok"], state)
+
+    def test_unknown_state(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.player_state(sup, "flying", "rj", True)["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_injection_refused(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.player_state(sup, "godmode", 'rj" ; quit', True)["ok"])
+        self.assertEqual(sup.sent, [])
+
+
+class BroadcastTests(unittest.TestCase):
+    def test_sends(self):
+        sup = FakeSupervisor()
+        self.assertTrue(gm.broadcast(sup, "server restarting")["ok"])
+        self.assertEqual(sup.sent, ['servermsg "server restarting"'])
+
+    def test_empty_refused(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.broadcast(sup, "   ")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_breakout_characters_stripped_not_rejected(self):
+        """The message is free text an admin typed; keep it, make it safe."""
+        sup = FakeSupervisor()
+        self.assertTrue(gm.broadcast(sup, 'hello "world"\nquit')["ok"])
+        # Quotes and the newline go; the rest of the text survives.
+        self.assertEqual(sup.sent, ['servermsg "hello worldquit"'])
+
+    def test_length_bounded(self):
+        self.assertFalse(gm.broadcast(FakeSupervisor(), "x" * 600)["ok"])
+
+    def test_requires_running_server(self):
+        self.assertFalse(gm.broadcast(FakeSupervisor(alive=False), "hi")["ok"])
