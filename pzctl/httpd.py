@@ -23,6 +23,7 @@ from . import (
     logs,
     modcheck,
     moderation,
+    modlint,
     mods,
     optionmeta,
     profiles,
@@ -481,6 +482,15 @@ class Handler(BaseHTTPRequestHandler):
     def api_gm_broadcast(self, params):
         self._json(gm.broadcast(self.ctx.sup, self._body().get("message", "")))
 
+    def api_mod_lint(self, params):
+        self._json(modlint.check(self.ctx.cfg))
+
+    def api_mod_updates(self, params):
+        self._json(modlint.updates(self.ctx.cfg))
+
+    def api_mod_seen(self, params):
+        self._json(modlint.snapshot(self.ctx.cfg))
+
     def api_logs(self, params):
         self._json(
             {
@@ -552,6 +562,9 @@ ROUTES = {
     ("GET", "/api/anticheat"): Handler.api_get_anticheat,
     ("POST", "/api/anticheat"): Handler.api_set_anticheat,
     ("GET", "/api/diagnose"): Handler.api_diagnose,
+    ("GET", "/api/mods/lint"): Handler.api_mod_lint,
+    ("GET", "/api/mods/updates"): Handler.api_mod_updates,
+    ("POST", "/api/mods/seen"): Handler.api_mod_seen,
     ("POST", "/api/mods/check"): Handler.api_mod_check_start,
     ("GET", "/api/mods/check"): Handler.api_mod_check_poll,
     ("GET", "/api/whitelist"): Handler.api_whitelist,

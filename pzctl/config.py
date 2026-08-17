@@ -29,6 +29,8 @@ def defaults() -> dict:
         "admin_password": "",
         "steam": True,
         # Empty means "find steamcmd on PATH". App 380870 is the dedicated server.
+        # Workshop folder mtimes recorded at the last server start.
+        "mods_seen": {},
         "steamcmd_path": "",
         "steam_app_id": "380870",
         "java": {
