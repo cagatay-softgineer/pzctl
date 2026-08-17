@@ -68,6 +68,9 @@ def defaults() -> dict:
             "dir": str(zomboid / "Backups"),
             "retention": 14,
             "include_config": True,
+            # A second copy, ideally not on the same disk as the world.
+            "secondary_dir": "",
+            "secondary_retention": 0,
         },
     }
 

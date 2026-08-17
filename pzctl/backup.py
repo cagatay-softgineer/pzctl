@@ -83,6 +83,7 @@ def run(cfg: Config, supervisor=None, reason: str = "manual") -> dict:
         return {"ok": False, "error": str(exc)}
 
     pruned = prune(cfg)
+    offsite = copy_offsite(cfg, target)
     result = {
         "ok": True,
         "file": str(target),
@@ -91,14 +92,71 @@ def run(cfg: Config, supervisor=None, reason: str = "manual") -> dict:
         "files": files,
         "seconds": round(time.time() - started, 1),
         "pruned": pruned,
+        "offsite": offsite,
     }
     log(
         f"backup ({reason}): {target.name} - {result['size_mb']} MB, "
         f"{files} files in {result['seconds']}s",
         "pzctl",
     )
+    if not offsite.get("ok"):
+        # The primary backup succeeded; only the second copy did not.
+        log(f"backup ({reason}): secondary copy failed - {offsite.get('error')}", "error")
     notify.event(cfg, "backup", f"{target.name} ({result['size_mb']} MB, {reason})")
     return result
+
+
+def copy_offsite(cfg: Config, archive: Path) -> dict:
+    """Copy a finished archive to the secondary destination, if one is set.
+
+    A backup beside the world it protects survives a bad update or a corrupted
+    save, but not the disk failing. This is the copy that survives that, so it
+    is deliberately tolerant: a network share being unreachable must not turn a
+    successful backup into a failed one.
+    """
+    target_dir = str(cfg.get("backup.secondary_dir") or "").strip()
+    if not target_dir:
+        return {"ok": True, "skipped": "no secondary destination configured"}
+
+    destination = Path(target_dir)
+    try:
+        if destination.resolve() == archive.parent.resolve():
+            # Copying a file onto itself would truncate it.
+            return {
+                "ok": False,
+                "error": "the secondary destination is the same folder as the primary",
+            }
+    except OSError:
+        pass
+
+    try:
+        destination.mkdir(parents=True, exist_ok=True)
+        copied = destination / archive.name
+        shutil.copy2(archive, copied)
+    except OSError as exc:
+        return {"ok": False, "error": f"could not copy to {destination}: {exc}"}
+
+    pruned = _prune_dir(destination, f"{cfg.get('server_name')}-*.zip",
+                        int(cfg.get("backup.secondary_retention") or 0))
+    return {"ok": True, "path": str(copied), "pruned": pruned}
+
+
+def _prune_dir(directory: Path, pattern: str, retention: int) -> list[str]:
+    """Keep the newest `retention` archives in a directory. 0 keeps everything."""
+    if retention <= 0:
+        return []
+    try:
+        archives = sorted(directory.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+    except OSError:
+        return []
+    removed = []
+    for path in archives[retention:]:
+        try:
+            path.unlink()
+            removed.append(path.name)
+        except OSError:
+            pass
+    return removed
 
 
 def prune(cfg: Config) -> list[str]:
