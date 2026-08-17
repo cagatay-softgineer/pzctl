@@ -68,3 +68,34 @@ a regression there quietly rewrites somebody's server config.
 - Match the existing code style in the file you're editing.
 - No new external dependencies without discussion first — the
   zero-dependency, standard-library-only design is intentional.
+
+## Cutting a release
+
+Releases are built by `.github/workflows/release.yml` when a `v*` tag is pushed.
+
+1. Bump `__version__` in `pzctl/__init__.py`
+2. Commit it
+3. Tag and push:
+
+```
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The workflow runs the tests, checks the tag matches `__version__`, builds
+`pzctl-1.2.3.zip` and publishes the release with generated notes.
+
+**The tag must match `__version__`.** The workflow fails if it does not, on
+purpose: the version is shown in the panel header, in `/api/status` and in the
+startup banner, so a mismatch would have every install reporting a version it
+is not.
+
+The zip contains only what a user drops into their server directory — the
+`pzctl/` package, `PZ-Control.bat`, `pzctl.json.example`, `README.md` and
+`LICENSE`. It deliberately excludes `tests/`, `.github/` and `pzctl.json`, the
+last of which holds admin and RCON passwords.
+
+There is no PyPI package. `pzctl/config.py` derives `SERVER_DIR` from the
+package's own location on disk, and `pzctl/mods.py` walks up from there to find
+Steam Workshop content, so pzctl has to live inside the server directory. A
+site-packages install would break both.

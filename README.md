@@ -11,8 +11,13 @@ sequenced on the [roadmap board](https://github.com/users/cagatay-softgineer/pro
 
 ## Install
 
-Drop the `pzctl/` folder and `PZ-Control.bat` into your Project Zomboid Dedicated
-Server install directory (the one with `jre64\`, `StartServer64.bat`, etc. — this
+Download the latest zip from
+[Releases](https://github.com/cagatay-softgineer/pzctl/releases) and unzip it
+into your Project Zomboid Dedicated Server install directory. That is the whole
+install — the zip contains exactly the files that belong there.
+
+To run from a clone instead, drop the `pzctl/` folder and `PZ-Control.bat` into
+your Project Zomboid Dedicated Server install directory (the one with `jre64\`, `StartServer64.bat`, etc. — this
 repo doesn't ship the game server itself, just the control layer).
 
 Copy `pzctl.json.example` to `pzctl.json` in that same directory before first run
