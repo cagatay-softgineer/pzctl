@@ -71,7 +71,18 @@ The INI and SandboxVars editors rewrite **only the values you changed**, in
 place. Comments, key order and settings pzctl doesn't know about are preserved
 byte-for-byte. Both files are written atomically via a `.tmp` + replace.
 
-Changes need a server restart to take effect — PZ reads these at boot.
+**Save** writes the file; the server picks the values up at its next start.
+
+**Save & apply live** (Server INI only) additionally pushes each changed option
+to a running server over RCON with `changeoption`, then runs `reloadoptions`
+once — so a PVP toggle or a loot multiplier takes effect without kicking
+everyone off. The file is still written first and remains the source of truth.
+
+pzctl keeps no list of which options are live-applicable; it sends them and
+reports what the server says back. The exceptions are options consumed while
+the process starts — ports, RCON settings, and the mod/map lists — which are
+flagged as needing a restart rather than being attempted. Live apply requires
+RCON, since without it the server's replies could not be reported.
 
 ### Where the labels come from
 

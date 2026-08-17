@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import backup, logs, mods, optionmeta, pzini, rcon, sandbox
+from . import backup, liveconfig, logs, mods, optionmeta, pzini, rcon, sandbox
 from .config import Config
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
@@ -201,14 +201,23 @@ class Handler(BaseHTTPRequestHandler):
         )
 
     def api_set_ini(self, params):
-        changes = self._body().get("changes") or {}
+        body = self._body()
+        changes = body.get("changes") or {}
         if not changes:
             return self._json({"ok": True, "changed": []})
         try:
             changed = pzini.write(self.ctx.cfg.ini_path, {k: str(v) for k, v in changes.items()})
         except FileNotFoundError:
             return self._error(409, "server .ini does not exist yet - start the server once")
-        self._json({"ok": True, "changed": changed})
+
+        result = {"ok": True, "changed": changed}
+        # The file is always written first and stays the source of truth; the
+        # live push is an extra step over the top of it.
+        if body.get("apply_live") and changed:
+            result["live"] = liveconfig.apply(
+                self.ctx.cfg, self.ctx.sup, {k: str(changes[k]) for k in changed}
+            )
+        self._json(result)
 
     def api_get_sandbox(self, params):
         cfg = self.ctx.cfg

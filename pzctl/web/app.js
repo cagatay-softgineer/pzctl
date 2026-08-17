@@ -442,18 +442,45 @@ function makeEditor(opts) {
     applyFilter();
   }
 
-  async function save() {
+  async function save(applyLive) {
     if (!Object.keys(state.changes).length) return toast("nothing to save");
-    const res = await api(opts.endpoint, { body: { changes: state.changes } });
+    const res = await api(opts.endpoint, {
+      body: { changes: state.changes, apply_live: !!applyLive },
+    });
     if (!res.ok) return toast(res.error || "save failed", true);
-    toast("saved " + (res.changed || []).length + " setting(s) — restart the server to apply");
+
+    const count = (res.changed || []).length;
+    if (!res.live) {
+      toast("saved " + count + " setting(s) — restart the server to apply");
+    } else if (!res.live.ok && res.live.error) {
+      // The file was still written; only the live push failed.
+      toast("saved " + count + " setting(s), but live apply failed: " + res.live.error, true);
+    } else {
+      toast(describeLive(res.live, count), !res.live.ok);
+    }
     load();
+  }
+
+  // Summarise what the server actually accepted. pzctl keeps no whitelist of
+  // live-applicable options, so this reports the outcome rather than promising
+  // it in advance.
+  function describeLive(live, count) {
+    const parts = ["saved " + count + " setting(s)"];
+    if (live.applied.length) parts.push(live.applied.length + " applied live");
+    if (live.restart_required.length) {
+      parts.push("restart needed for " + live.restart_required.join(", "));
+    }
+    if (live.failed.length) {
+      parts.push("failed: " + live.failed.map((f) => f.key).join(", "));
+    }
+    return parts.join(" — ");
   }
 
   opts.searchEl.addEventListener("input", applyFilter);
   if (opts.modifiedEl) opts.modifiedEl.addEventListener("change", applyFilter);
   if (opts.nonDefaultEl) opts.nonDefaultEl.addEventListener("change", applyFilter);
-  opts.saveEl.addEventListener("click", save);
+  opts.saveEl.addEventListener("click", () => save(false));
+  if (opts.liveEl) opts.liveEl.addEventListener("click", () => save(true));
   return load;
 }
 
@@ -465,6 +492,7 @@ $$("[data-collapse]").forEach((btn) => btn.addEventListener("click", () =>
 LOADERS.ini = makeEditor({
   endpoint: "/api/config/ini", fieldsEl: $("#iniFields"), searchEl: $("#iniSearch"),
   dirtyEl: $("#iniDirty"), pathEl: $("#iniPath"), saveEl: $("#iniSave"),
+  liveEl: $("#iniSaveLive"),
   navEl: $("#iniNav"), modifiedEl: $("#iniModified"), countEl: $("#iniCount"),
 });
 LOADERS.sandbox = makeEditor({
