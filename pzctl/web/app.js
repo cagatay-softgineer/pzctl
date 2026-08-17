@@ -1151,6 +1151,68 @@ $("#modCheckBtn").addEventListener("click", async () => {
   }, 3000);
 });
 
+/* ── spawn vehicle ─────────────────────────────────────────── */
+
+let vehPick = null;
+let vehTimer = null;
+
+async function searchVehicles() {
+  const term = $("#vehSearch").value.trim();
+  const list = $("#vehResults");
+  if (!term) {
+    list.innerHTML = "";
+    $("#vehCount").textContent = "";
+    return;
+  }
+  const data = await api("/api/game/vehicles?limit=10&search=" + encodeURIComponent(term));
+  list.innerHTML = "";
+  if (!data.ok) {
+    $("#vehCount").textContent = data.error || "unavailable";
+    return;
+  }
+  $("#vehCount").textContent = data.total + " match" + (data.total === 1 ? "" : "es");
+
+  data.vehicles.forEach((entry) => {
+    const li = document.createElement("li");
+    li.className = "playerrow";
+    const label = document.createElement("span");
+    label.textContent = entry.name;
+    const id = document.createElement("small");
+    id.textContent = entry.id;
+    label.appendChild(id);
+    li.appendChild(label);
+
+    const pick = document.createElement("button");
+    pick.type = "button";
+    pick.className = "btn tiny ghost";
+    pick.textContent = "select";
+    pick.addEventListener("click", () => {
+      vehPick = entry.id;
+      $("#vehSearch").value = entry.name;
+      $("#vehCount").textContent = "selected " + entry.id;
+      list.innerHTML = "";
+    });
+    li.appendChild(pick);
+    list.appendChild(li);
+  });
+}
+
+$("#vehSearch").addEventListener("input", () => {
+  vehPick = null;
+  clearTimeout(vehTimer);
+  vehTimer = setTimeout(searchVehicles, 250);
+});
+
+$("#vehForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  if (!vehPick) return toast("pick a vehicle from the search results first", true);
+  const res = await api("/api/gm/addvehicle", {
+    method: "POST",
+    body: { script: vehPick, target: $("#vehTarget").value },
+  });
+  toast(res.ok ? res.script + " spawned - " + (res.reply || "sent") : res.error, !res.ok);
+});
+
 /* ── give item ─────────────────────────────────────────────── */
 
 let itemPick = null;

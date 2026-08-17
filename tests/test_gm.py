@@ -181,3 +181,61 @@ class AddItemTests(unittest.TestCase):
         sup = FakeSupervisor(reply=(False, "nope"))
         gm.add_item(sup, "rj", "Base.Axe")
         self.assertTrue(any(stream == "error" for _, stream in sup.emitted))
+
+
+class AddVehicleTests(unittest.TestCase):
+    def test_spawns_for_a_player(self):
+        sup = FakeSupervisor()
+        result = gm.add_vehicle(sup, "Base.CarLightsPolice", "rj")
+        self.assertTrue(result["ok"])
+        self.assertEqual(sup.sent, ['addvehicle "Base.CarLightsPolice" "rj"'])
+
+    def test_spawns_at_coordinates(self):
+        """The command accepts a player name or an x,y,z triple."""
+        sup = FakeSupervisor()
+        result = gm.add_vehicle(sup, "Base.CarLightsPolice", "10700,9200,0")
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["coords"])
+        self.assertEqual(sup.sent, ['addvehicle "Base.CarLightsPolice" "10700,9200,0"'])
+
+    def test_coordinates_may_have_spaces(self):
+        sup = FakeSupervisor()
+        gm.add_vehicle(sup, "Base.Car", "100, 200, 0")
+        self.assertEqual(sup.sent, ['addvehicle "Base.Car" "100,200,0"'])
+
+    def test_negative_and_decimal_coordinates(self):
+        sup = FakeSupervisor()
+        self.assertTrue(gm.add_vehicle(sup, "Base.Car", "-10.5,200,0")["ok"])
+
+    def test_requires_a_module_qualified_script(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.add_vehicle(sup, "CarLightsPolice", "rj")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_missing_target(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.add_vehicle(sup, "Base.Car", "")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_rejects_injection_in_the_script(self):
+        sup = FakeSupervisor()
+        for bad in ('Base.Car" ; quit', "Base.Car quit", "Base.Car\nquit"):
+            self.assertFalse(gm.add_vehicle(sup, bad, "rj")["ok"], bad)
+        self.assertEqual(sup.sent, [])
+
+    def test_rejects_injection_in_the_target(self):
+        """A target that is neither valid coordinates nor a valid name."""
+        sup = FakeSupervisor()
+        for bad in ('rj" "x', "rj\nquit", "1,2"):
+            self.assertFalse(gm.add_vehicle(sup, "Base.Car", bad)["ok"], bad)
+        self.assertEqual(sup.sent, [])
+
+    def test_requires_a_running_server(self):
+        sup = FakeSupervisor(alive=False)
+        self.assertFalse(gm.add_vehicle(sup, "Base.Car", "rj")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_is_logged_for_audit(self):
+        sup = FakeSupervisor()
+        gm.add_vehicle(sup, "Base.Car", "rj")
+        self.assertTrue(any("gm: spawning Base.Car" in text for text, _ in sup.emitted))

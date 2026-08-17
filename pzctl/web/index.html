@@ -94,6 +94,15 @@
             Use <b>none</b> to remove elevated access.</p>
         </div>
         <div class="card">
+          <div class="card-head"><h2>Spawn vehicle</h2><span class="hint" id="vehCount"></span></div>
+          <form class="modform" id="vehForm">
+            <input id="vehTarget" placeholder="username or x,y,z" autocomplete="off" spellcheck="false">
+            <input id="vehSearch" placeholder="search vehicles, e.g. police" autocomplete="off" spellcheck="false">
+            <button class="btn" type="submit">Spawn</button>
+          </form>
+          <ul id="vehResults" class="plain"></ul>
+        </div>
+        <div class="card">
           <div class="card-head"><h2>Give item</h2><span class="hint" id="itemCount"></span></div>
           <form class="modform" id="itemForm">
             <input id="itemUser" placeholder="username" autocomplete="off" spellcheck="false">

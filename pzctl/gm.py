@@ -24,6 +24,8 @@ PERK_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 # A full item id: Module.ItemName. Both halves are bare identifiers.
 ITEM_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*\.[A-Za-z0-9_]+$")
 MAX_ITEM_COUNT = 1000
+# addvehicle takes a player name or a bare "x,y,z" coordinate triple.
+COORD_RE = re.compile(r"^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$")
 # The game caps skills at 10; XP totals are far larger, so allow a wide range
 # but refuse values that are obviously a mistake or an overflow attempt.
 MAX_XP = 10_000_000
@@ -102,3 +104,49 @@ def add_item(supervisor, username: str, item_id: str, count=1) -> dict:
     if not ok:
         supervisor.emit(f"gm: additem for {username!r} FAILED - {reply}", "error")
     return {"ok": ok, "username": username, "item": item_id, "count": amount, "reply": reply}
+
+
+def add_vehicle(supervisor, script: str, target: str) -> dict:
+    """Spawn a vehicle.
+
+    Documented as `addvehicle "script" "user or x,y,z"`. The target is either a
+    player name or a coordinate triple, so both forms are accepted and both are
+    validated - either one ends up inside the command.
+    """
+    script = str(script or "").strip()
+    target = str(target or "").strip()
+
+    if not script:
+        return {"ok": False, "error": "no vehicle given"}
+    if not ITEM_ID_RE.match(script):
+        return {"ok": False, "error": f"invalid vehicle id: {script!r} (expected Module.Vehicle)"}
+    if not target:
+        return {"ok": False, "error": "no target given - a player name or x,y,z"}
+
+    compact = target.replace(" ", "")
+    coords = bool(COORD_RE.match(compact))
+    if coords:
+        target = compact
+    elif "," in target:
+        # A comma means coordinates were intended. Falling back to treating it
+        # as a player name would send a target that cannot match anyone.
+        return {
+            "ok": False,
+            "error": f"invalid coordinates: {target!r} (expected x,y,z)",
+        }
+    else:
+        problem = validate_name(target)
+        if problem:
+            return {"ok": False, "error": problem}
+
+    if supervisor is None or not supervisor.is_alive():
+        return {"ok": False, "error": "server is not running"}
+
+    where = "at " + target if coords else f"for {target!r}"
+    supervisor.emit(f"gm: spawning {script} {where}", "pzctl")
+    ok, reply = supervisor.send_command(
+        f'addvehicle "{script}" "{target}"', prefer="auto"
+    )
+    if not ok:
+        supervisor.emit(f"gm: addvehicle {script} FAILED - {reply}", "error")
+    return {"ok": ok, "script": script, "target": target, "coords": coords, "reply": reply}
