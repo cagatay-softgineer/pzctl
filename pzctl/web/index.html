@@ -94,6 +94,18 @@
             Use <b>none</b> to remove elevated access.</p>
         </div>
         <div class="card">
+          <div class="card-head"><h2>Grant XP</h2></div>
+          <form class="modform" id="xpForm">
+            <input id="xpUser" placeholder="username" autocomplete="off" spellcheck="false">
+            <select id="xpPerk"><option value="">loading skills...</option></select>
+            <input id="xpAmount" type="number" placeholder="XP" value="100">
+            <button class="btn" type="submit">Grant</button>
+          </form>
+          <p class="hint">Skills come from your game install. The id sent is often not the name
+            shown in game &mdash; Running is <code>Sprinting</code>, First Aid is
+            <code>Doctor</code> &mdash; so pick from the list rather than typing.</p>
+        </div>
+        <div class="card">
           <div class="card-head">
             <h2>Whitelist</h2>
             <label class="check"><input type="checkbox" id="wlEnabled"> enforce</label>

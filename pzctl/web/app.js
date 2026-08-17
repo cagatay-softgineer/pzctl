@@ -1151,6 +1151,46 @@ $("#modCheckBtn").addEventListener("click", async () => {
   }, 3000);
 });
 
+/* ── grant XP ──────────────────────────────────────────────── */
+
+// Skills are read from the game install, never hardcoded: the ids differ
+// between builds and the display name is not the id.
+async function loadPerks() {
+  const sel = $("#xpPerk");
+  const data = await api("/api/game/perks");
+  sel.innerHTML = "";
+  if (!data.ok) {
+    sel.innerHTML = '<option value="">' + (data.error || "unavailable") + "</option>";
+    return;
+  }
+  data.perks.forEach((p) => {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    // Show the id too when it differs, so the command sent is never a surprise.
+    opt.textContent = p.differs ? p.name + "  (" + p.id + ")" : p.name;
+    if (p.description) opt.title = p.description;
+    sel.appendChild(opt);
+  });
+}
+
+$("#xpForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const res = await api("/api/gm/addxp", {
+    method: "POST",
+    body: {
+      username: $("#xpUser").value,
+      perk: $("#xpPerk").value,
+      xp: Number($("#xpAmount").value),
+    },
+  });
+  toast(
+    res.ok
+      ? res.xp + " " + res.perk + " XP to " + res.username + " — " + (res.reply || "sent")
+      : res.error,
+    !res.ok
+  );
+});
+
 /* ── whitelist ─────────────────────────────────────────────── */
 
 async function refreshWhitelist() {
@@ -1345,4 +1385,5 @@ if (!TOKEN) askToken();
 loadHistory().then(openStream);
 refreshStatus();
 refreshWhitelist();
+loadPerks();
 setInterval(refreshStatus, 3000);

@@ -17,6 +17,7 @@ from . import (
     backup,
     crashdiag,
     gamedata,
+    gm,
     liveconfig,
     logconfig,
     logs,
@@ -428,6 +429,12 @@ class Handler(BaseHTTPRequestHandler):
     def api_game_perks(self, params):
         self._json(gamedata.perks())
 
+    def api_add_xp(self, params):
+        body = self._body()
+        self._json(
+            gm.add_xp(self.ctx.sup, body.get("username", ""), body.get("perk", ""), body.get("xp", 0))
+        )
+
     def api_logs(self, params):
         self._json(
             {
@@ -482,6 +489,7 @@ ROUTES = {
     ("POST", "/api/access-level"): Handler.api_access_level,
     ("POST", "/api/server/update"): Handler.api_server_update,
     ("GET", "/api/server/update"): Handler.api_server_update_status,
+    ("POST", "/api/gm/addxp"): Handler.api_add_xp,
     ("GET", "/api/game/items"): Handler.api_game_items,
     ("GET", "/api/game/perks"): Handler.api_game_perks,
     ("GET", "/api/profiles"): Handler.api_profiles,
