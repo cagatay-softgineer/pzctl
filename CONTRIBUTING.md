@@ -73,9 +73,13 @@ a regression there quietly rewrites somebody's server config.
 
 Releases are built by `.github/workflows/release.yml` when a `v*` tag is pushed.
 
-1. Bump `__version__` in `pzctl/__init__.py`
-2. Commit it
-3. Tag and push:
+1. Decide the number. pzctl follows semantic versioning — see the policy at the top
+   of [CHANGELOG.md](CHANGELOG.md). Most changes are MINOR, because an upgrade never
+   rewrites a user's `pzctl.json`.
+2. Add a section to `CHANGELOG.md`
+3. Bump `__version__` in `pzctl/__init__.py`
+4. Commit both
+5. Tag and push:
 
 ```
 git tag v1.2.3

@@ -147,6 +147,7 @@ and note that `pzctl.json` stores the admin and RCON passwords in cleartext.
 | [Wiki](https://github.com/cagatay-softgineer/pzctl/wiki) | Installation, full `pzctl.json` reference, panel guide, RCON setup, scheduling and backups, mods, security, troubleshooting |
 | [Roadmap board](https://github.com/users/cagatay-softgineer/projects/2) | Planned features, sequenced into phases with their dependencies |
 | [Issues](https://github.com/cagatay-softgineer/pzctl/issues) | Bugs and feature requests |
+| [Changelog](CHANGELOG.md) | What changed in each release, and the versioning policy |
 
 ## Contributing
 
