@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import (
     backup,
+    crashdiag,
     liveconfig,
     logs,
     modcheck,
@@ -336,6 +337,9 @@ class Handler(BaseHTTPRequestHandler):
             )
         )
 
+    def api_diagnose(self, params):
+        self._json(crashdiag.analyse(self.ctx.cfg))
+
     def api_mod_check_start(self, params):
         self._json(modcheck.request(self.ctx.cfg, self.ctx.sup))
 
@@ -408,6 +412,7 @@ ROUTES = {
     ("POST", "/api/backups/run"): Handler.api_run_backup,
     ("POST", "/api/backups/restore"): Handler.api_restore_backup,
     ("POST", "/api/moderate"): Handler.api_moderate,
+    ("GET", "/api/diagnose"): Handler.api_diagnose,
     ("POST", "/api/mods/check"): Handler.api_mod_check_start,
     ("GET", "/api/mods/check"): Handler.api_mod_check_poll,
     ("GET", "/api/whitelist"): Handler.api_whitelist,
