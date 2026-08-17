@@ -607,6 +607,7 @@ function renderInstalled() {
 }
 
 LOADERS.mods = async function () {
+  refreshOfflineUpdates();
   const data = await api("/api/config/mods");
   if (!data.ok) return toast(data.error || "load failed", true);
   modState = data;
@@ -1097,6 +1098,55 @@ async function offerUpgrade(info) {
     "\n\nPrevious version kept as: " + res.previous_kept_as
   );
 }
+
+/* ── mod configuration lint ────────────────────────────────── */
+
+async function runModLint() {
+  const box = $("#modLintResult");
+  box.className = "diag on";
+  box.textContent = "checking...";
+  const data = await api("/api/mods/lint");
+  box.innerHTML = "";
+  if (!data.ok) { box.textContent = data.error || "unavailable"; return; }
+
+  if (!data.problems.length) {
+    box.textContent = "no problems found in the mod configuration";
+    return;
+  }
+  const head = document.createElement("p");
+  head.className = "hint";
+  head.textContent = data.errors + " error(s), " + data.warnings + " warning(s)";
+  box.appendChild(head);
+
+  const list = document.createElement("ul");
+  list.className = "plain";
+  data.problems.forEach((p) => {
+    const li = document.createElement("li");
+    li.textContent = p.message;
+    // Errors stop the server booting; warnings usually will not.
+    if (p.level === "error") li.className = "bad";
+    list.appendChild(li);
+  });
+  box.appendChild(list);
+}
+
+async function refreshOfflineUpdates() {
+  const data = await api("/api/mods/updates");
+  const el = $("#modOffline");
+  if (!data.ok) { el.textContent = ""; return; }
+  if (!data.checked) { el.textContent = data.note || ""; return; }
+  el.textContent = data.changed.length
+    ? data.changed.length + " mod(s) changed on disk since the last start — restart to pick them up"
+    : "nothing changed on disk since the last start";
+  el.className = data.changed.length ? "hint bad" : "hint";
+}
+
+$("#modLintBtn").addEventListener("click", runModLint);
+$("#modSeenBtn").addEventListener("click", async () => {
+  const res = await api("/api/mods/seen", { method: "POST", body: {} });
+  toast(res.ok ? "baseline recorded for " + res.tracked + " Workshop item(s)" : res.error, !res.ok);
+  refreshOfflineUpdates();
+});
 
 /* ── mod update check ──────────────────────────────────────── */
 

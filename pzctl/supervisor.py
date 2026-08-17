@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import rcon
-from . import logconfig
+from . import logconfig, modlint
 from .config import LOG_DIR, SERVER_DIR, Config
 
 STOPPED = "stopped"
@@ -220,6 +220,12 @@ class Supervisor:
             self.emit(f"launching pid {self.proc.pid}: {' '.join(cmd)}", "pzctl")
             threading.Thread(target=self._reader, args=(self.proc,), name="pz-out", daemon=True).start()
             threading.Thread(target=self._monitor, args=(self.proc,), name="pz-mon", daemon=True).start()
+            # Baseline for the offline mod-update signal: anything that changes
+            # on disk after this point is worth flagging.
+            try:
+                modlint.snapshot(self.cfg)
+            except Exception:
+                pass
             return True, f"started (pid {self.proc.pid})"
 
     def stop(self, timeout: float | None = None) -> tuple[bool, str]:
