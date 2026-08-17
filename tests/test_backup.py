@@ -239,3 +239,82 @@ class RunTests(TempBackupTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OffsiteTests(TempBackupTest):
+    def test_no_secondary_is_a_no_op(self):
+        result = backup.copy_offsite(self.cfg, self.cfg.backup_dir / "x.zip")
+        self.assertTrue(result["ok"])
+        self.assertIn("no secondary", result["skipped"])
+
+    def test_copies_the_archive(self):
+        archive = self.make_archive("servertest-1.zip", 1_000_000)
+        secondary = self.dir / "Offsite"
+        self.cfg.set("backup.secondary_dir", str(secondary))
+        result = backup.copy_offsite(self.cfg, archive)
+        self.assertTrue(result["ok"], result.get("error"))
+        self.assertTrue((secondary / "servertest-1.zip").is_file())
+
+    def test_creates_the_destination(self):
+        archive = self.make_archive("servertest-1.zip", 1_000_000)
+        self.cfg.set("backup.secondary_dir", str(self.dir / "deep" / "nested"))
+        self.assertTrue(backup.copy_offsite(self.cfg, archive)["ok"])
+
+    def test_same_folder_is_refused(self):
+        """Copying a file onto itself would truncate it."""
+        archive = self.make_archive("servertest-1.zip", 1_000_000)
+        self.cfg.set("backup.secondary_dir", str(self.cfg.backup_dir))
+        result = backup.copy_offsite(self.cfg, archive)
+        self.assertFalse(result["ok"])
+        self.assertIn("same folder", result["error"])
+        self.assertTrue(archive.is_file())
+
+    def test_unreachable_destination_is_reported_not_raised(self):
+        """A missing share must not turn a good backup into a failed one."""
+        archive = self.make_archive("servertest-1.zip", 1_000_000)
+        blocker = self.dir / "not-a-directory"
+        blocker.write_text("i am a file", encoding="utf-8")
+        # A directory cannot be created underneath a regular file, on any platform.
+        self.cfg.set("backup.secondary_dir", str(blocker / "share"))
+        result = backup.copy_offsite(self.cfg, archive)
+        self.assertFalse(result["ok"])
+        self.assertIn("could not copy", result["error"])
+
+    def test_secondary_retention_prunes_independently(self):
+        secondary = self.dir / "Offsite"
+        secondary.mkdir()
+        for i in range(4):
+            old = secondary / f"servertest-200{i}.zip"
+            old.write_bytes(b"z")
+            os.utime(old, (1_000_000 + i, 1_000_000 + i))
+        archive = self.make_archive("servertest-9999.zip", 2_000_000)
+        self.cfg.set("backup.secondary_dir", str(secondary))
+        self.cfg.set("backup.secondary_retention", 2)
+        backup.copy_offsite(self.cfg, archive)
+        self.assertEqual(len(list(secondary.glob("*.zip"))), 2)
+
+    def test_zero_retention_keeps_everything(self):
+        secondary = self.dir / "Offsite"
+        self.cfg.set("backup.secondary_dir", str(secondary))
+        self.cfg.set("backup.secondary_retention", 0)
+        for i in range(3):
+            backup.copy_offsite(self.cfg, self.make_archive(f"servertest-{i}.zip", 1_000_000 + i))
+        self.assertEqual(len(list(secondary.glob("*.zip"))), 3)
+
+    def test_run_includes_the_offsite_result(self):
+        self.populate_save()
+        self.cfg.set("backup.secondary_dir", str(self.dir / "Offsite"))
+        result = backup.run(self.cfg)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["offsite"]["ok"])
+        self.assertTrue((self.dir / "Offsite").is_dir())
+
+    def test_backup_still_succeeds_when_the_copy_fails(self):
+        """The primary archive is what matters; the second copy is a bonus."""
+        self.populate_save()
+        blocker = self.dir / "not-a-directory"
+        blocker.write_text("i am a file", encoding="utf-8")
+        self.cfg.set("backup.secondary_dir", str(blocker / "share"))
+        result = backup.run(self.cfg)
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["offsite"]["ok"])
