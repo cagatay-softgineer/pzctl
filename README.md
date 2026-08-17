@@ -3,6 +3,10 @@
 Supervisor daemon + web control panel for a Project Zomboid dedicated server.
 Pure Python 3.11+ standard library — nothing to install, no dependencies.
 
+Full documentation lives in the [wiki](https://github.com/cagatay-softgineer/pzctl/wiki)
+— configuration reference, RCON setup, and troubleshooting. Planned work is
+sequenced on the [roadmap board](https://github.com/users/cagatay-softgineer/projects/2).
+
 ## Install
 
 Drop the `pzctl/` folder and `PZ-Control.bat` into your Project Zomboid Dedicated
@@ -117,3 +121,17 @@ The default bind is `127.0.0.1`, so nothing is reachable off this box unless you
 pass `--host 0.0.0.0`. If you do: the panel is plain HTTP with a bearer token —
 put it behind a VPN or an HTTPS reverse proxy rather than on the open internet,
 and note that `pzctl.json` stores the admin and RCON passwords in cleartext.
+
+## Documentation and roadmap
+
+| | |
+|---|---|
+| [Wiki](https://github.com/cagatay-softgineer/pzctl/wiki) | Installation, full `pzctl.json` reference, panel guide, RCON setup, scheduling and backups, mods, security, troubleshooting |
+| [Roadmap board](https://github.com/users/cagatay-softgineer/projects/2) | Planned features, sequenced into phases with their dependencies |
+| [Issues](https://github.com/cagatay-softgineer/pzctl/issues) | Bugs and feature requests |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: standard library
+only — no new dependencies without discussion first, since the zero-dependency
+design is deliberate.
