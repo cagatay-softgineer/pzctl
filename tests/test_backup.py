@@ -106,6 +106,39 @@ class PruneTests(TempBackupTest):
         self.assertTrue((self.cfg.backup_dir / "otherserver-20260101-000000.zip").exists())
 
 
+class ArchiveNamingTests(TempBackupTest):
+    def test_back_to_back_backups_do_not_overwrite_each_other(self):
+        """Two backups in the same second must produce two archives.
+
+        The timestamp only has second resolution, so without a uniqueness
+        check a scheduled backup racing a manual one - or the safety backup
+        taken during a restore - would silently overwrite the earlier archive.
+        """
+        self.populate_save()
+        self.cfg.set("backup.include_config", False)
+
+        first = backup.run(self.cfg)
+        second = backup.run(self.cfg)
+
+        self.assertTrue(first["ok"], first.get("error"))
+        self.assertTrue(second["ok"], second.get("error"))
+        self.assertNotEqual(first["name"], second["name"])
+        self.assertEqual(len(list(self.cfg.backup_dir.glob("*.zip"))), 2)
+
+    def test_collision_suffix_still_matches_the_prune_glob(self):
+        self.populate_save()
+        self.cfg.set("backup.include_config", False)
+        self.cfg.set("backup.retention", 1)
+
+        backup.run(self.cfg)
+        backup.run(self.cfg)
+        backup.prune(self.cfg)
+
+        # Retention of 1 must leave exactly one archive, which only happens if
+        # the de-duplicated name is still matched by the prune glob.
+        self.assertEqual(len(list(self.cfg.backup_dir.glob("*.zip"))), 1)
+
+
 class ListingTests(TempBackupTest):
     def test_missing_dir_returns_empty(self):
         self.assertEqual(backup.listing(self.cfg), [])

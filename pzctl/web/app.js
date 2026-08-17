@@ -713,9 +713,54 @@ LOADERS.backups = async function () {
       td.textContent = text;
       tr.appendChild(td);
     });
+    const actions = document.createElement("td");
+    const restore = document.createElement("button");
+    restore.className = "btn ghost tiny";
+    restore.textContent = "restore";
+    restore.addEventListener("click", () => restoreBackup(b.name, restore));
+    actions.appendChild(restore);
+    tr.appendChild(actions);
     rows.appendChild(tr);
   });
 };
+
+// Restore is destructive and cannot be undone from the panel, so it asks twice:
+// once to show what is in the archive, once to type the world name.
+async function restoreBackup(name, button) {
+  const info = await api("/api/backups/inspect?name=" + encodeURIComponent(name));
+  if (!info.ok) return toast(info.error || "cannot read that archive", true);
+
+  const world = info.world;
+  const configs = info.config_files.length
+    ? "\nConfig files: " + info.config_files.join(", ")
+    : "\nNo config files in this archive.";
+  const summary =
+    "Restore " + info.name + "?\n\n" +
+    "This REPLACES the current world (" + world + ") with " +
+    info.save_files + " files from " + info.size_mb + " MB archive." +
+    configs +
+    "\n\nThe server must be stopped. Your current world is backed up first.";
+  if (!window.confirm(summary)) return;
+
+  const typed = window.prompt('Type the world name "' + world + '" to confirm:');
+  if (typed !== world) return toast("restore cancelled", true);
+
+  button.disabled = true;
+  button.textContent = "restoring...";
+  const res = await api("/api/backups/restore", {
+    method: "POST",
+    body: { name: name, confirm: true },
+  });
+  button.disabled = false;
+  button.textContent = "restore";
+
+  if (!res.ok) return toast(res.error || "restore failed", true);
+  toast(
+    "restored " + res.restored + " - previous world kept as " + res.displaced,
+    false
+  );
+  LOADERS.backups();
+}
 
 $("#backupNow").addEventListener("click", async (ev) => {
   ev.target.disabled = true;

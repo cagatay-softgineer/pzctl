@@ -285,6 +285,24 @@ class Handler(BaseHTTPRequestHandler):
     def api_run_backup(self, params):
         self._json(backup.run(self.ctx.cfg, self.ctx.sup, reason="manual"))
 
+    def api_inspect_backup(self, params):
+        self._json(backup.inspect(self.ctx.cfg, (params.get("name") or [""])[0]))
+
+    def api_restore_backup(self, params):
+        body = self._body()
+        # Restoring destroys the current world, so the client has to say so
+        # explicitly - a stray POST must not be enough.
+        if body.get("confirm") is not True:
+            return self._error(400, "restore requires confirm: true")
+        self._json(
+            backup.restore(
+                self.ctx.cfg,
+                body.get("name", ""),
+                self.ctx.sup,
+                pre_backup=body.get("pre_backup", True),
+            )
+        )
+
     def api_rcon_test(self, params):
         cfg = self.ctx.cfg
         try:
@@ -314,7 +332,9 @@ ROUTES = {
     ("GET", "/api/config/launcher"): Handler.api_get_launcher,
     ("POST", "/api/config/launcher"): Handler.api_set_launcher,
     ("GET", "/api/backups"): Handler.api_backups,
+    ("GET", "/api/backups/inspect"): Handler.api_inspect_backup,
     ("POST", "/api/backups/run"): Handler.api_run_backup,
+    ("POST", "/api/backups/restore"): Handler.api_restore_backup,
     ("POST", "/api/rcon/test"): Handler.api_rcon_test,
 }
 
