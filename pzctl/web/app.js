@@ -869,6 +869,7 @@ $("#updateBtn").addEventListener("click", async () => {
     link.href = res.url;
     link.classList.add("on");
     toast("pzctl v" + res.latest + " is available (you have v" + res.current + ")");
+    offerUpgrade(res);
     return;
   }
   link.classList.remove("on");
@@ -877,6 +878,35 @@ $("#updateBtn").addEventListener("click", async () => {
   else if (res.status === "no_releases") toast("no releases published yet");
   else toast("could not compare versions", true);
 });
+
+// Upgrading replaces pzctl's own code and needs a daemon restart to take
+// effect, so the confirmation says both things plainly.
+async function offerUpgrade(info) {
+  const ok = window.confirm(
+    "Upgrade pzctl from v" + info.current + " to v" + info.latest + "?
+
+" +
+    "The game server must be stopped first.
+" +
+    "Your pzctl.json and logs are left untouched, and the current version is kept.
+
+" +
+    "After upgrading you must restart pzctl for the new version to run."
+  );
+  if (!ok) return;
+
+  const res = await api("/api/updates/apply", { method: "POST", body: { confirm: true } });
+  if (!res.ok) return toast(res.error || "upgrade failed", true);
+  toast("upgraded to v" + res.installed + " - restart pzctl to run it", false);
+  window.alert(
+    "Upgrade installed.
+
+" + res.note +
+    "
+
+Previous version kept as: " + res.previous_kept_as
+  );
+}
 
 /* ── mod update check ──────────────────────────────────────── */
 
