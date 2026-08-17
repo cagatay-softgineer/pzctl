@@ -1,8 +1,14 @@
 name: release
 
+# Releases are driven by the version in pzctl/__init__.py, not by tagging.
+# Bump it in a PR; when that PR merges, this publishes. Merges that do not
+# change the version publish nothing, so docs and test PRs stay quiet - which
+# matters because the panel's update check would otherwise tell every user a
+# new version is available for a typo fix.
 on:
   push:
-    tags: ["v*"]
+    branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,47 +19,68 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
-      # A tag must never produce a release from a broken tree.
+      - name: Read the version
+        id: version
+        run: |
+          VERSION=$(python -c "import pzctl; print(pzctl.__version__)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "pzctl/__init__.py declares $VERSION"
+
+      # The version is the trigger, so an unchanged one means nothing to do.
+      - name: Has this version already been released?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "release=skip" >> "$GITHUB_OUTPUT"
+            echo "${{ steps.version.outputs.tag }} is already released - nothing to do"
+          else
+            echo "release=go" >> "$GITHUB_OUTPUT"
+            echo "${{ steps.version.outputs.tag }} is new - releasing"
+          fi
+
       - name: Run tests
+        if: steps.check.outputs.release == 'go'
         run: python -m unittest discover -s tests -t .
 
-      # The panel and the startup banner both display __version__. If the tag
-      # disagreed with it, every install would report a version it is not.
-      - name: Check the tag matches __version__
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          CODE=$(python -c "import pzctl; print(pzctl.__version__)")
-          echo "tag=$TAG  __version__=$CODE"
-          if [ "$TAG" != "$CODE" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match __version__ ($CODE) in pzctl/__init__.py"
-            exit 1
-          fi
+      - name: Check panel JavaScript parses
+        if: steps.check.outputs.release == 'go'
+        run: node --check pzctl/web/app.js
 
       # Only the files a user drops into their server directory. Notably no
       # tests/, no .github/, and no pzctl.json - that one holds their secrets.
       - name: Build the drop-in zip
+        if: steps.check.outputs.release == 'go'
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.version.outputs.version }}"
           STAGE="dist/pzctl-$VERSION"
           mkdir -p "$STAGE"
           cp -r pzctl "$STAGE/"
           find "$STAGE/pzctl" -name '__pycache__' -type d -prune -exec rm -rf {} +
-          cp PZ-Control.bat pzctl.json.example README.md LICENSE "$STAGE/"
+          cp PZ-Control.bat pzctl.json.example README.md LICENSE CHANGELOG.md "$STAGE/"
           (cd dist && zip -r "pzctl-$VERSION.zip" "pzctl-$VERSION")
           echo "--- zip contents ---"
           unzip -l "dist/pzctl-$VERSION.zip"
 
-      - name: Publish the release
+      - name: Tag and publish
+        if: steps.check.outputs.release == 'go'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" \
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          git tag -a "$TAG" -m "pzctl $TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" \
             "dist/pzctl-$VERSION.zip" \
-            --title "$GITHUB_REF_NAME" \
+            --title "$TAG" \
             --generate-notes

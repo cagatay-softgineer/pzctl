@@ -71,33 +71,29 @@ a regression there quietly rewrites somebody's server config.
 
 ## Cutting a release
 
-Releases are built by `.github/workflows/release.yml` when a `v*` tag is pushed.
+Releases are driven by the version, not by tagging. Bump `__version__` in
+`pzctl/__init__.py` as part of a PR; when that PR merges to `master`,
+`.github/workflows/release.yml` tags it, builds `pzctl-<version>.zip` and
+publishes the release.
 
-1. Decide the number. pzctl follows semantic versioning — see the policy at the top
-   of [CHANGELOG.md](CHANGELOG.md). Most changes are MINOR, because an upgrade never
-   rewrites a user's `pzctl.json`.
+1. Decide the number. pzctl follows semantic versioning — see the policy at the
+   top of [CHANGELOG.md](CHANGELOG.md). Most changes are MINOR, because an
+   upgrade never rewrites a user's `pzctl.json`.
 2. Add a section to `CHANGELOG.md`
 3. Bump `__version__` in `pzctl/__init__.py`
-4. Commit both
-5. Tag and push:
+4. Merge
 
-```
-git tag v1.2.3
-git push origin v1.2.3
-```
+Merges that do **not** change `__version__` publish nothing. That is deliberate:
+the panel's update check would otherwise announce a new version to every user
+for a typo fix.
 
-The workflow runs the tests, checks the tag matches `__version__`, builds
-`pzctl-1.2.3.zip` and publishes the release with generated notes.
-
-**The tag must match `__version__`.** The workflow fails if it does not, on
-purpose: the version is shown in the panel header, in `/api/status` and in the
-startup banner, so a mismatch would have every install reporting a version it
-is not.
+To release without a code change, re-run the workflow manually from the Actions
+tab. It does nothing if the current version is already released.
 
 The zip contains only what a user drops into their server directory — the
-`pzctl/` package, `PZ-Control.bat`, `pzctl.json.example`, `README.md` and
-`LICENSE`. It deliberately excludes `tests/`, `.github/` and `pzctl.json`, the
-last of which holds admin and RCON passwords.
+`pzctl/` package, `PZ-Control.bat`, `pzctl.json.example`, `README.md`,
+`CHANGELOG.md` and `LICENSE`. It deliberately excludes `tests/`, `.github/` and
+`pzctl.json`, the last of which holds admin and RCON passwords.
 
 There is no PyPI package. `pzctl/config.py` derives `SERVER_DIR` from the
 package's own location on disk, and `pzctl/mods.py` walks up from there to find
