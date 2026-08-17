@@ -499,12 +499,16 @@ $$("[data-expand]").forEach((btn) => btn.addEventListener("click", () =>
 $$("[data-collapse]").forEach((btn) => btn.addEventListener("click", () =>
   $$("#" + btn.dataset.collapse + " .grp").forEach((g) => { g.open = false; })));
 
-LOADERS.ini = makeEditor({
+const iniEditor = makeEditor({
   endpoint: "/api/config/ini", fieldsEl: $("#iniFields"), searchEl: $("#iniSearch"),
   dirtyEl: $("#iniDirty"), pathEl: $("#iniPath"), saveEl: $("#iniSave"),
   liveEl: $("#iniSaveLive"),
   navEl: $("#iniNav"), modifiedEl: $("#iniModified"), countEl: $("#iniCount"),
 });
+LOADERS.ini = async function () {
+  await iniEditor();
+  await loadAntiCheat();
+};
 LOADERS.sandbox = makeEditor({
   endpoint: "/api/config/sandbox", fieldsEl: $("#sbFields"), searchEl: $("#sbSearch"),
   dirtyEl: $("#sbDirty"), pathEl: $("#sbPath"), saveEl: $("#sbSave"),
@@ -866,6 +870,66 @@ $("#modForm").addEventListener("submit", async (ev) => {
   if (!target) return toast("enter a name, Steam ID or IP", true);
   await moderate($("#modAction").value, target, null);
   $("#modTarget").value = "";
+});
+
+/* ── anti-cheat ────────────────────────────────────────────── */
+
+async function loadAntiCheat() {
+  const data = await api("/api/anticheat");
+  const grid = $("#acGrid");
+  grid.innerHTML = "";
+  if (!data.ok) {
+    $("#acSummary").textContent = data.error || "unavailable";
+    return;
+  }
+  $("#acSummary").textContent = data.enabled_count + " of " + data.total + " enabled";
+
+  data.types.forEach((entry) => {
+    const label = document.createElement("label");
+    // Only the documented ones are highlighted; the rest stay plain numbers
+    // rather than carrying a description nobody has verified.
+    if (entry.description) label.className = "noted";
+
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = entry.enabled;
+    box.dataset.acnum = entry.number;
+    label.appendChild(box);
+
+    const text = document.createElement("span");
+    const num = document.createElement("span");
+    num.className = "acnum";
+    num.textContent = "Type " + entry.number;
+    text.appendChild(num);
+    if (entry.description) {
+      const desc = document.createElement("span");
+      desc.className = "acdesc";
+      desc.textContent = entry.description;
+      text.appendChild(desc);
+    }
+    label.appendChild(text);
+    grid.appendChild(label);
+  });
+}
+
+function setAllAntiCheat(on) {
+  $$("#acGrid input[data-acnum]").forEach((box) => (box.checked = on));
+}
+$("#acAllOn").addEventListener("click", () => setAllAntiCheat(true));
+$("#acAllOff").addEventListener("click", () => {
+  if (window.confirm("Disable all 24 anti-cheat checks?\n\nThis removes the protection they provide. Normally you only need to turn off the specific check a mod trips."))
+    setAllAntiCheat(false);
+});
+
+$("#acSave").addEventListener("click", async () => {
+  const types = {};
+  $$("#acGrid input[data-acnum]").forEach((box) => {
+    types[box.dataset.acnum] = box.checked;
+  });
+  const res = await api("/api/anticheat", { method: "POST", body: { types: types } });
+  if (!res.ok) return toast(res.error || "save failed", true);
+  toast("anti-cheat saved (" + res.changed.length + " changed) — restart the server to apply");
+  loadAntiCheat();
 });
 
 /* ── pzctl update check ────────────────────────────────────── */
