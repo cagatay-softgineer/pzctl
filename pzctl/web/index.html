@@ -33,6 +33,7 @@
   <button class="tab" data-tab="mods">Mods</button>
   <button class="tab" data-tab="launcher">Launcher</button>
   <button class="tab" data-tab="backups">Backups</button>
+  <button class="tab" data-tab="logs">Logs</button>
 </nav>
 
 <main>
@@ -238,6 +239,23 @@
         <tbody id="backupRows"></tbody></table>
       <p class="hint">Restoring replaces the current world. The server must be stopped
         first, and pzctl backs up the existing world before overwriting it.</p>
+    </div>
+  </section>
+
+  <!-- ── logs ──────────────────────────────────────────────── -->
+  <section class="panel" id="tab-logs">
+    <div class="card">
+      <div class="card-head">
+        <h2>Game logs</h2>
+        <button class="btn ghost tiny" data-reload="logs">reload</button>
+        <label class="check"><input type="checkbox" id="logFollow"> auto-refresh</label>
+        <button class="btn ghost tiny" id="logRefresh">refresh</button>
+      </div>
+      <p class="hint" id="logDir"></p>
+      <p class="hint">These are the game's own logs, separate from the pzctl console on
+        the Dashboard. Read-only, showing the end of each file.</p>
+      <div class="logpick"><select id="logSelect"></select><span class="hint" id="logMeta"></span></div>
+      <div id="logView" class="console"></div>
     </div>
   </section>
 </main>

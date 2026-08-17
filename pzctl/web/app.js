@@ -772,6 +772,73 @@ $("#backupNow").addEventListener("click", async (ev) => {
   LOADERS.backups();
 });
 
+/* ── game logs ─────────────────────────────────────────────── */
+
+let logTimer = null;
+
+LOADERS.logs = async function () {
+  const data = await api("/api/logs");
+  if (!data.ok) return toast(data.error || "load failed", true);
+  $("#logDir").textContent = data.dir;
+
+  const select = $("#logSelect");
+  const previous = select.value;
+  select.innerHTML = "";
+
+  if (!data.logs.length) {
+    const opt = document.createElement("option");
+    opt.textContent = "no log files found - has the server run yet?";
+    opt.value = "";
+    select.appendChild(opt);
+    $("#logView").textContent = "";
+    $("#logMeta").textContent = "";
+    return;
+  }
+
+  data.logs.forEach((entry) => {
+    const opt = document.createElement("option");
+    opt.value = entry.name;
+    opt.textContent = entry.name + "  (" + entry.kind + ", " + entry.size_kb + " KB)";
+    select.appendChild(opt);
+  });
+  // Keep the current selection across reloads where possible.
+  if (previous && data.logs.some((entry) => entry.name === previous)) select.value = previous;
+  await showLog();
+};
+
+async function showLog() {
+  const name = $("#logSelect").value;
+  if (!name) return;
+  const view = $("#logView");
+  const atBottom = view.scrollHeight - view.scrollTop - view.clientHeight < 40;
+
+  const data = await api("/api/logs/tail?name=" + encodeURIComponent(name));
+  if (!data.ok) {
+    $("#logMeta").textContent = "";
+    view.textContent = data.error || "could not read that log";
+    return;
+  }
+
+  view.textContent = data.text || "(empty)";
+  $("#logMeta").textContent =
+    data.size_kb + " KB total" + (data.truncated ? " - showing the end only" : "");
+  // Logs are read tail-first, so the newest lines are at the bottom.
+  if (atBottom) view.scrollTop = view.scrollHeight;
+}
+
+$("#logSelect").addEventListener("change", showLog);
+$("#logRefresh").addEventListener("click", showLog);
+$("#logFollow").addEventListener("change", (ev) => {
+  if (logTimer) clearInterval(logTimer);
+  // Only poll while the tab is actually on screen - no point re-reading a log
+  // nobody is looking at.
+  logTimer = ev.target.checked
+    ? setInterval(() => {
+        if ($("#tab-logs").classList.contains("on")) showLog();
+      }, 5000)
+    : null;
+});
+
 /* ── boot ──────────────────────────────────────────────────── */
 
 if (!TOKEN) askToken();

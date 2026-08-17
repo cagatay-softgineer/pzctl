@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import backup, mods, optionmeta, pzini, rcon, sandbox
+from . import backup, logs, mods, optionmeta, pzini, rcon, sandbox
 from .config import Config
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
@@ -303,6 +303,24 @@ class Handler(BaseHTTPRequestHandler):
             )
         )
 
+    def api_logs(self, params):
+        self._json(
+            {
+                "ok": True,
+                "logs": logs.discover(self.ctx.cfg),
+                "dir": str(logs.log_dir(self.ctx.cfg)),
+            }
+        )
+
+    def api_log_tail(self, params):
+        name = (params.get("name") or [""])[0]
+        raw_bytes = (params.get("bytes") or [""])[0]
+        try:
+            max_bytes = int(raw_bytes) if raw_bytes else logs.DEFAULT_TAIL_BYTES
+        except ValueError:
+            max_bytes = logs.DEFAULT_TAIL_BYTES
+        self._json(logs.tail(self.ctx.cfg, name, max_bytes))
+
     def api_rcon_test(self, params):
         cfg = self.ctx.cfg
         try:
@@ -335,6 +353,8 @@ ROUTES = {
     ("GET", "/api/backups/inspect"): Handler.api_inspect_backup,
     ("POST", "/api/backups/run"): Handler.api_run_backup,
     ("POST", "/api/backups/restore"): Handler.api_restore_backup,
+    ("GET", "/api/logs"): Handler.api_logs,
+    ("GET", "/api/logs/tail"): Handler.api_log_tail,
     ("POST", "/api/rcon/test"): Handler.api_rcon_test,
 }
 
