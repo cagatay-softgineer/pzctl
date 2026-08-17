@@ -78,6 +78,20 @@
           </form>
           <p class="hint">Kick and ban for players who are online are on the list above.
             Every action is written to the console log.</p>
+          <form class="modform" id="aclForm">
+            <input id="aclUser" placeholder="username" autocomplete="off" spellcheck="false">
+            <select id="aclLevel">
+              <option value="admin">admin</option>
+              <option value="moderator">moderator</option>
+              <option value="overseer">overseer</option>
+              <option value="gm">gm</option>
+              <option value="observer">observer</option>
+              <option value="none">none (demote)</option>
+            </select>
+            <button class="btn" type="submit">Set role</button>
+          </form>
+          <p class="hint">In-game role, separate from the pzctl panel token.
+            Use <b>none</b> to remove elevated access.</p>
         </div>
         <div class="card">
           <div class="card-head">

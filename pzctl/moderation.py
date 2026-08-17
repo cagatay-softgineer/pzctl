@@ -25,6 +25,11 @@ IPV4_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
 # action -> (needs a name, builds the command)
 ACTIONS = ("kick", "ban", "unban", "banid", "unbanid", "banip", "unbanip")
 
+# In-game roles, highest first. `none` is how a player is demoted - there is no
+# "user" level, and using the wrong token here fails silently rather than
+# erroring, so the set is offered explicitly in the UI.
+ACCESS_LEVELS = ("admin", "moderator", "overseer", "gm", "observer", "none")
+
 
 def clean_text(value: str) -> str:
     """Strip characters that would break out of a quoted argument."""
@@ -109,3 +114,33 @@ def act(supervisor, action: str, target: str, reason: str = "", ban_ip: bool = F
     if not ok:
         supervisor.emit(f"moderation: {action} {target!r} FAILED - {reply}", "error")
     return {"ok": ok, "action": action, "target": target, "command": command, "reply": reply}
+
+
+def set_access_level(supervisor, username: str, level: str) -> dict:
+    """Set a player's in-game role.
+
+    Documented as `setaccesslevel "username" "accesslevel"`. The level is
+    validated for shape rather than against ACCESS_LEVELS, so a role added by a
+    future build still works; the server rejects anything it does not know.
+    """
+    username = str(username or "").strip()
+    level = str(level or "").strip().lower()
+
+    problem = validate_name(username)
+    if problem:
+        return {"ok": False, "error": problem}
+    if not level:
+        return {"ok": False, "error": "no access level given"}
+    if not re.match(r"^[a-z][a-z0-9_]*$", level):
+        return {"ok": False, "error": f"invalid access level: {level!r}"}
+
+    if supervisor is None or not supervisor.is_alive():
+        return {"ok": False, "error": "server is not running"}
+
+    supervisor.emit(f"access level: {username!r} -> {level}", "pzctl")
+    ok, reply = supervisor.send_command(
+        f'setaccesslevel "{username}" "{level}"', prefer="auto"
+    )
+    if not ok:
+        supervisor.emit(f"access level: {username!r} FAILED - {reply}", "error")
+    return {"ok": ok, "username": username, "level": level, "reply": reply}
