@@ -943,6 +943,91 @@ $("#profileForm").addEventListener("submit", async (ev) => {
   loadProfiles();
 });
 
+/* ── performance ───────────────────────────────────────────── */
+
+async function loadPerf() {
+  const data = await api("/api/perf");
+  const box = $("#perfResult");
+  box.className = "diag on";
+  box.innerHTML = "";
+  if (!data.ok) { box.textContent = "unavailable"; return; }
+
+  const jvm = data.jvm;
+  const head = document.createElement("p");
+  head.className = "hint";
+  head.textContent =
+    "heap " + (jvm.xms || "?") + " to " + (jvm.xmx || "?") +
+    (jvm.total_memory_gb ? "  |  machine has " + jvm.total_memory_gb + " GB" : "");
+  box.appendChild(head);
+
+  jvm.notes.forEach((n) => {
+    const p = document.createElement("p");
+    // Errors here stop the server booting; warnings only degrade it.
+    p.className = n.level === "error" ? "hint bad" : "hint";
+    p.textContent = (n.level === "error" ? "will not start: " : "") + n.message;
+    box.appendChild(p);
+  });
+  if (!jvm.notes.length) {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "memory settings look sensible for this machine";
+    box.appendChild(p);
+  }
+
+  data.ports.ports.forEach((entry) => {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = entry.key + " " + entry.port + ": " + (entry.in_use ? "in use" : "free");
+    box.appendChild(p);
+  });
+  const note = document.createElement("p");
+  note.className = "hint";
+  note.textContent = data.ports.note;
+  box.appendChild(note);
+
+  $("#gcLog").checked = jvm.gc_logging;
+
+  const fields = $("#netOptions");
+  fields.innerHTML = "";
+  if (data.network.ok) {
+    data.network.options.forEach((opt) => {
+      const label = document.createElement("label");
+      const range = opt.kind === "bool" ? "" : " (" + opt.min + "-" + opt.max + ")";
+      label.textContent = opt.key + range;
+      const input = document.createElement("input");
+      if (opt.kind === "bool") {
+        input.type = "checkbox";
+        input.checked = String(opt.value).toLowerCase() === "true";
+      } else {
+        input.type = "number";
+        input.min = opt.min;
+        input.max = opt.max;
+        input.value = opt.value;
+      }
+      input.dataset.net = opt.key;
+      input.dataset.kind = opt.kind;
+      label.appendChild(input);
+      fields.appendChild(label);
+    });
+  }
+}
+
+$("#perfBtn").addEventListener("click", loadPerf);
+
+$("#gcLog").addEventListener("change", async (ev) => {
+  const res = await api("/api/perf/gclog", { method: "POST", body: { enabled: ev.target.checked } });
+  toast(res.ok ? "GC logging " + (res.enabled ? "on" : "off") + " - restart to apply" : res.error, !res.ok);
+});
+
+$("#netSave").addEventListener("click", async () => {
+  const options = {};
+  $$("#netOptions [data-net]").forEach((el) => {
+    options[el.dataset.net] = el.dataset.kind === "bool" ? el.checked : Number(el.value);
+  });
+  const res = await api("/api/perf/network", { method: "POST", body: { options: options } });
+  toast(res.ok ? "saved " + res.changed.length + " option(s) - restart to apply" : res.error, !res.ok);
+});
+
 /* ── server update ─────────────────────────────────────────── */
 
 let suTimer = null;
