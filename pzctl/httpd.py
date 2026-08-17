@@ -11,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from . import __version__
 from . import (
     backup,
     crashdiag,
@@ -142,6 +143,7 @@ class Handler(BaseHTTPRequestHandler):
             "backups": str(self.ctx.cfg.backup_dir),
         }
         status["ini_exists"] = self.ctx.cfg.ini_path.exists()
+        status["version"] = __version__
         status["ok"] = True
         self._json(status)
 
