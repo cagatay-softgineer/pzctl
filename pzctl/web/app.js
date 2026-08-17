@@ -741,6 +741,7 @@ $("#rconTest").addEventListener("click", async () => {
 /* ── backups ───────────────────────────────────────────────── */
 
 LOADERS.backups = async function () {
+  loadBackupAudit();
   const data = await api("/api/backups");
   if (!data.ok) return toast(data.error || "load failed", true);
   $("#backupDir").textContent = data.dir;
@@ -988,6 +989,63 @@ $("#suRun").addEventListener("click", async () => {
     }
   }, 3000);
 });
+
+/* ── config drift ──────────────────────────────────────────── */
+
+$("#driftBtn").addEventListener("click", async () => {
+  const box = $("#driftResult");
+  box.className = "diag on";
+  box.textContent = "asking the server...";
+  const data = await api("/api/config/drift");
+  box.innerHTML = "";
+  if (!data.ok) { box.textContent = data.error || "could not check"; return; }
+
+  if (data.in_sync) {
+    box.textContent = "the running server matches this file (" + data.live_count + " options compared)";
+    return;
+  }
+  const head = document.createElement("p");
+  head.innerHTML = "<b>" + data.drift.length + " option(s) differ from the running server</b>";
+  box.appendChild(head);
+  const list = document.createElement("ul");
+  list.className = "plain";
+  data.drift.forEach((d) => {
+    const li = document.createElement("li");
+    li.textContent = d.key + " — file: " + (d.file === null ? "(absent)" : d.file) +
+      "  |  running: " + d.live;
+    list.appendChild(li);
+  });
+  box.appendChild(list);
+  const note = document.createElement("p");
+  note.className = "hint";
+  note.textContent = "A restart will apply the values in this file, replacing what is running now.";
+  box.appendChild(note);
+});
+
+/* ── backup audit ──────────────────────────────────────────── */
+
+async function loadBackupAudit() {
+  const box = $("#backupAudit");
+  const data = await api("/api/backups/audit");
+  box.innerHTML = "";
+  if (!data.ok) { box.textContent = data.error || ""; return; }
+
+  const summary = document.createElement("p");
+  summary.className = "hint";
+  summary.textContent =
+    "pzctl: " + data.pzctl.archives + " archive(s), keeping " + data.pzctl.retention +
+    "  |  game: BackupsOnStart=" + data.game.BackupsOnStart.value +
+    ", BackupsPeriod=" + data.game.BackupsPeriod.value +
+    ", BackupsCount=" + data.game.BackupsCount.value;
+  box.appendChild(summary);
+
+  data.notes.forEach((n) => {
+    const p = document.createElement("p");
+    p.className = "hint bad";
+    p.textContent = n.message;
+    box.appendChild(p);
+  });
+}
 
 /* ── anti-cheat ────────────────────────────────────────────── */
 

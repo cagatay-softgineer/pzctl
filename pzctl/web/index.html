@@ -203,6 +203,7 @@
         <input class="search" id="iniSearch" placeholder="search name, key or description...">
         <span class="dirty" id="iniDirty"></span>
         <button class="btn ghost tiny" data-reload="ini">reload</button>
+        <button class="btn ghost tiny" id="driftBtn" title="Compare the running server with this file">check drift</button>
         <button class="btn" id="iniSaveLive" title="Save, then push the changed options to the running server over RCON">Save &amp; apply live</button>
         <button class="btn go" id="iniSave">Save</button>
       </div>
@@ -213,6 +214,7 @@
         <span class="counter" id="iniCount"></span>
       </div>
       <p class="hint" id="iniPath"></p>
+      <div id="driftResult" class="diag"></div>
       <div class="groupnav" id="iniNav"></div>
       <div id="iniFields" class="optgroups"></div>
     </div>
@@ -416,6 +418,7 @@
         <button class="btn go" id="backupNow">Back up now</button>
       </div>
       <p class="hint" id="backupDir"></p>
+      <div id="backupAudit" class="diag on"></div>
       <table class="table"><thead><tr><th>Archive</th><th>Size</th><th>Created</th><th></th></tr></thead>
         <tbody id="backupRows"></tbody></table>
       <p class="hint">Restoring replaces the current world. The server must be stopped
