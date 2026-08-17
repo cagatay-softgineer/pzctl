@@ -365,6 +365,17 @@
             config and mods alone.</p>
         </div>
         <div class="card">
+          <div class="card-head">
+            <h2>Performance</h2>
+            <button class="btn ghost tiny" id="perfBtn">check</button>
+          </div>
+          <div id="perfResult" class="diag"></div>
+          <label class="check"><input type="checkbox" id="gcLog"> GC / heap logging (needs restart)</label>
+          <p class="hint">Diagnoses memory creep. Adds JVM logging flags; off by default.</p>
+          <div id="netOptions" class="fields"></div>
+          <button class="btn ghost tiny" id="netSave">Save tuning options</button>
+        </div>
+        <div class="card">
           <div class="card-head"><h2>Logging</h2></div>
           <div class="fields">
             <label>Enable categories (-debuglog)<textarea data-cfg="logging.debug" rows="3" spellcheck="false" placeholder="one per line, e.g. Network"></textarea></label>

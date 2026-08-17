@@ -28,6 +28,7 @@ from . import (
     modlint,
     mods,
     optionmeta,
+    perf,
     profiles,
     pzini,
     rcon,
@@ -499,6 +500,23 @@ class Handler(BaseHTTPRequestHandler):
     def api_backup_audit(self, params):
         self._json(backupaudit.audit(self.ctx.cfg))
 
+    def api_perf(self, params):
+        cfg = self.ctx.cfg
+        self._json(
+            {
+                "ok": True,
+                "jvm": perf.jvm_advice(cfg),
+                "network": perf.network_options(cfg),
+                "ports": perf.port_status(cfg),
+            }
+        )
+
+    def api_set_network(self, params):
+        self._json(perf.set_network_options(self.ctx.cfg, self._body().get("options") or {}))
+
+    def api_set_gc_logging(self, params):
+        self._json(perf.set_gc_logging(self.ctx.cfg, bool(self._body().get("enabled"))))
+
     def api_logs(self, params):
         self._json(
             {
@@ -569,6 +587,9 @@ ROUTES = {
     ("GET", "/api/profiles"): Handler.api_profiles,
     ("POST", "/api/profiles/switch"): Handler.api_switch_profile,
     ("POST", "/api/profiles/create"): Handler.api_create_profile,
+    ("GET", "/api/perf"): Handler.api_perf,
+    ("POST", "/api/perf/network"): Handler.api_set_network,
+    ("POST", "/api/perf/gclog"): Handler.api_set_gc_logging,
     ("GET", "/api/anticheat"): Handler.api_get_anticheat,
     ("POST", "/api/anticheat"): Handler.api_set_anticheat,
     ("GET", "/api/diagnose"): Handler.api_diagnose,
