@@ -256,6 +256,20 @@
         </div>
         <div class="card">
           <div class="card-head">
+            <h2>Profiles</h2>
+            <button class="btn ghost tiny" data-reload="launcher">reload</button>
+          </div>
+          <p class="hint">Each profile is a separate world with its own settings.
+            Switching changes which one the server loads — nothing on disk is moved.</p>
+          <ul id="profileList" class="plain"></ul>
+          <form class="modform" id="profileForm">
+            <input id="profileName" placeholder="new profile name" autocomplete="off" spellcheck="false">
+            <select id="profileCopy"><option value="">start fresh</option></select>
+            <button class="btn" type="submit">Create</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-head">
             <h2>Server update</h2>
             <span class="hint" id="suState"></span>
             <button class="btn" id="suRun">Update via SteamCMD</button>
