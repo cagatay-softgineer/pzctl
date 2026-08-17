@@ -849,6 +849,35 @@ $("#modForm").addEventListener("submit", async (ev) => {
   $("#modTarget").value = "";
 });
 
+/* ── pzctl update check ────────────────────────────────────── */
+
+// Only ever runs when pressed. pzctl makes no other outbound request, and a
+// background poll would quietly change that.
+$("#updateBtn").addEventListener("click", async () => {
+  const btn = $("#updateBtn");
+  const link = $("#updateLink");
+  btn.disabled = true;
+  btn.textContent = "...";
+  const res = await api("/api/updates");
+  btn.disabled = false;
+  btn.textContent = "check";
+
+  if (!res.ok) return toast(res.error || "could not check for updates", true);
+
+  if (res.status === "newer_available") {
+    link.textContent = "v" + res.latest + " available";
+    link.href = res.url;
+    link.classList.add("on");
+    toast("pzctl v" + res.latest + " is available (you have v" + res.current + ")");
+    return;
+  }
+  link.classList.remove("on");
+  if (res.status === "current") toast("you are on the latest release (v" + res.current + ")");
+  else if (res.status === "ahead") toast("you are ahead of the latest release (v" + res.latest + ")");
+  else if (res.status === "no_releases") toast("no releases published yet");
+  else toast("could not compare versions", true);
+});
+
 /* ── mod update check ──────────────────────────────────────── */
 
 let modCheckTimer = null;
