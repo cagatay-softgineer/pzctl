@@ -98,7 +98,9 @@ def write(path: Path, changes: dict[str, Any]) -> list[str]:
     """Apply dotted-path `changes` in place. Returns keys actually modified."""
     if not path.exists():
         raise FileNotFoundError(path)
-    text = path.read_text(encoding="utf-8", errors="replace")
+    # newline="" keeps the line endings intact; the default universal-newlines
+    # mode would translate CRLF to LF and make the check below always fail.
+    text = path.read_text(encoding="utf-8", errors="replace", newline="")
     newline = "\r\n" if "\r\n" in text else "\n"
     lines = text.splitlines()
     by_path = {entry.path: entry for entry in parse(path)}
