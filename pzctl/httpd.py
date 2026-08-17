@@ -16,6 +16,7 @@ from . import (
     anticheat,
     backup,
     crashdiag,
+    gamedata,
     liveconfig,
     logconfig,
     logs,
@@ -415,6 +416,18 @@ class Handler(BaseHTTPRequestHandler):
         body = self._body()
         self._json(profiles.create(self.ctx.cfg, body.get("name", ""), body.get("copy_from")))
 
+    def api_game_items(self, params):
+        self._json(
+            gamedata.items(
+                (params.get("search") or [""])[0],
+                (params.get("limit") or ["100"])[0],
+                (params.get("offset") or ["0"])[0],
+            )
+        )
+
+    def api_game_perks(self, params):
+        self._json(gamedata.perks())
+
     def api_logs(self, params):
         self._json(
             {
@@ -469,6 +482,8 @@ ROUTES = {
     ("POST", "/api/access-level"): Handler.api_access_level,
     ("POST", "/api/server/update"): Handler.api_server_update,
     ("GET", "/api/server/update"): Handler.api_server_update_status,
+    ("GET", "/api/game/items"): Handler.api_game_items,
+    ("GET", "/api/game/perks"): Handler.api_game_perks,
     ("GET", "/api/profiles"): Handler.api_profiles,
     ("POST", "/api/profiles/switch"): Handler.api_switch_profile,
     ("POST", "/api/profiles/create"): Handler.api_create_profile,
