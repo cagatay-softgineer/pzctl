@@ -23,6 +23,27 @@ Releases live on the [Releases page](https://github.com/cagatay-softgineer/pzctl
 
 ---
 
+## v1.2.0
+
+Server administration and maintenance.
+
+### Added
+
+- **Log verbosity control** (#32) — `-debuglog`/`-disablelog` categories at launch, and `log "Type" "Level"` on a running server. No category list is shipped: there is no authoritative published enumeration and it varies by build, so what you type is passed through and the server decides.
+- **In-game access levels** (#3) — set a player's role (`admin`, `moderator`, `overseer`, `gm`, `observer`, or `none` to demote). Separate from the pzctl panel token, which remains single-admin.
+- **Anti-cheat panel** (#34) — the 24 `AntiCheatProtectionType` toggles gathered in one place with bulk enable/disable. Only types 12 and 21 carry descriptions; no complete published mapping of the rest exists, and a wrong label would have you disable the wrong check.
+- **Server update via SteamCMD** (#29) — updates Project Zomboid itself (app 380870). Refuses while the server is running, backs up first, and refuses to run at all unless the target looks like a real server install — a wrong `force_install_dir` does not fail, it silently creates a second copy.
+
+### Fixed
+
+- Four dialogs in the panel contained real newlines inside JavaScript string literals, which broke `app.js` entirely and left the panel blank. CI now runs `node --check` on the panel JavaScript; the Python suite cannot see this class of error.
+
+### Note on #34
+
+The original issue described eight named anti-cheat options with a severity enum. Those do not exist — the setting is 24 booleans. Building it as written would have written nonexistent keys into `servertest.ini` permanently, since the INI writer appends keys it does not find. The issue has been corrected.
+
+---
+
 ## v1.1.0
 
 Self-update support.
