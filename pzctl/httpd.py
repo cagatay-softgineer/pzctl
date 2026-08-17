@@ -26,6 +26,7 @@ from . import (
     modcheck,
     moderation,
     modlint,
+    notify,
     mods,
     optionmeta,
     perf,
@@ -517,6 +518,12 @@ class Handler(BaseHTTPRequestHandler):
     def api_set_gc_logging(self, params):
         self._json(perf.set_gc_logging(self.ctx.cfg, bool(self._body().get("enabled"))))
 
+    def api_notify_test(self, params):
+        cfg = self.ctx.cfg
+        if not notify.configured(cfg):
+            return self._json({"ok": False, "error": "no Discord webhook configured"})
+        self._json(notify.send(cfg, f"✅ **{cfg.get('server_name')}** pzctl test message", blocking=True))
+
     def api_logs(self, params):
         self._json(
             {
@@ -587,6 +594,7 @@ ROUTES = {
     ("GET", "/api/profiles"): Handler.api_profiles,
     ("POST", "/api/profiles/switch"): Handler.api_switch_profile,
     ("POST", "/api/profiles/create"): Handler.api_create_profile,
+    ("POST", "/api/notify/test"): Handler.api_notify_test,
     ("GET", "/api/perf"): Handler.api_perf,
     ("POST", "/api/perf/network"): Handler.api_set_network,
     ("POST", "/api/perf/gclog"): Handler.api_set_gc_logging,

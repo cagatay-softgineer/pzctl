@@ -366,6 +366,22 @@
         </div>
         <div class="card">
           <div class="card-head">
+            <h2>Notifications</h2>
+            <button class="btn ghost tiny" id="notifyTest">test</button>
+          </div>
+          <div class="fields">
+            <label>Discord webhook URL<input data-cfg="notify.discord_webhook" type="password" placeholder="https://discord.com/api/webhooks/..."></label>
+            <label class="check"><input type="checkbox" data-cfg="notify.events.started"> server started</label>
+            <label class="check"><input type="checkbox" data-cfg="notify.events.stopped"> server stopped</label>
+            <label class="check"><input type="checkbox" data-cfg="notify.events.crashed"> server crashed</label>
+            <label class="check"><input type="checkbox" data-cfg="notify.events.backup"> backup finished</label>
+            <label class="check"><input type="checkbox" data-cfg="notify.events.restart_warning"> restart warnings</label>
+          </div>
+          <p class="hint">pzctl&rsquo;s own notifications, separate from the game&rsquo;s Discord
+            bridge in the server INI. Sent only when one of these happens.</p>
+        </div>
+        <div class="card">
+          <div class="card-head">
             <h2>Performance</h2>
             <button class="btn ghost tiny" id="perfBtn">check</button>
           </div>

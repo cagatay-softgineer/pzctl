@@ -31,6 +31,17 @@ def defaults() -> dict:
         # Empty means "find steamcmd on PATH". App 380870 is the dedicated server.
         # Workshop folder mtimes recorded at the last server start.
         "mods_seen": {},
+        # pzctl's own notifications, separate from the game's Discord bridge.
+        "notify": {
+            "discord_webhook": "",
+            "events": {
+                "started": True,
+                "stopped": True,
+                "crashed": True,
+                "backup": False,
+                "restart_warning": True,
+            },
+        },
         "steamcmd_path": "",
         "steam_app_id": "380870",
         "java": {

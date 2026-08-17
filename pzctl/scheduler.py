@@ -7,7 +7,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-from . import backup
+from . import backup, notify
 from .config import Config
 
 TICK_SECONDS = 20
@@ -35,6 +35,64 @@ def next_occurrence(hhmm: str, now: datetime | None = None) -> datetime | None:
     target = now.replace(hour=parsed[0], minute=parsed[1], second=0, microsecond=0)
     if target <= now - timedelta(minutes=2):
         target += timedelta(days=1)
+    return target
+
+
+DAY_NAMES = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def _wanted_days(job: dict) -> set[int] | None:
+    """Weekday numbers a job may run on, or None for every day."""
+    raw = job.get("days")
+    if not raw:
+        return None
+    wanted = set()
+    for entry in raw:
+        name = str(entry).strip().lower()[:3]
+        if name in DAY_NAMES:
+            wanted.add(DAY_NAMES.index(name))
+    # An unrecognised day list would otherwise silently mean "never run".
+    return wanted or None
+
+
+def next_run(job: dict, now: datetime | None = None) -> datetime | None:
+    """When this job next fires.
+
+    Three shapes, all optional additions to the original daily HH:MM job so
+    existing pzctl.json files keep working untouched:
+
+      {"time": "04:00"}                     every day
+      {"time": "04:00", "days": ["sat"]}    only on those weekdays
+      {"every_hours": 6}                    every N hours from midnight
+    """
+    now = now or datetime.now()
+
+    every = job.get("every_hours")
+    if every:
+        try:
+            hours = int(every)
+        except (TypeError, ValueError):
+            return None
+        if hours < 1 or hours > 24:
+            return None
+        # Anchored at midnight so the times are predictable and survive a
+        # restart, rather than drifting from whenever the daemon last started.
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        elapsed = (now - midnight).total_seconds() / 3600
+        step = int(elapsed // hours) + 1
+        return midnight + timedelta(hours=step * hours)
+
+    target = next_occurrence(job.get("time", ""), now)
+    if target is None:
+        return None
+
+    days = _wanted_days(job)
+    if days is not None:
+        for _ in range(8):
+            if target.weekday() in days:
+                return target
+            target += timedelta(days=1)
+        return None
     return target
 
 
@@ -81,13 +139,13 @@ class Scheduler:
             for job in jobs:
                 if not job.get("enabled", True):
                     continue
-                target = next_occurrence(job.get("time", ""), now)
+                target = next_run(job, now)
                 if target is None:
                     continue
                 events.append(
                     {
                         "kind": kind,
-                        "time": job.get("time"),
+                        "time": job.get("time") or f"every {job.get('every_hours')}h",
                         "at": target.timestamp(),
                         "in_sec": round((target - now).total_seconds()),
                         "warn_minutes": job.get("warn_minutes") or [],
@@ -125,7 +183,7 @@ class Scheduler:
     def _tick_restart(self, index: int, job: dict, now: datetime) -> None:
         if not job.get("enabled", True):
             return
-        target = next_occurrence(job.get("time", ""), now)
+        target = next_run(job, now)
         if target is None:
             return
         seconds_out = (target - now).total_seconds()
@@ -136,6 +194,7 @@ class Scheduler:
             if low < seconds_out <= warn * 60 and self._due(f"warn|{index}|{stamp}|{warn}"):
                 unit = "minute" if warn == 1 else "minutes"
                 self._submit(self._broadcast, f"Server restarts in {warn} {unit}.")
+                notify.event(self.cfg, "restart_warning", f"in {warn} {unit}")
 
         if -120 <= seconds_out <= TICK_SECONDS and self._due(f"restart|{index}|{stamp}"):
             self._submit(self._do_restart, str(job.get("time")))
@@ -152,7 +211,7 @@ class Scheduler:
     def _tick_backup(self, index: int, job: dict, now: datetime) -> None:
         if not job.get("enabled", True):
             return
-        target = next_occurrence(job.get("time", ""), now)
+        target = next_run(job, now)
         if target is None:
             return
         seconds_out = (target - now).total_seconds()

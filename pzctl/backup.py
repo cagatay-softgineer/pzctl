@@ -15,6 +15,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
+from . import notify
 from .config import Config
 
 SAVES_PREFIX = "Saves/"
@@ -96,6 +97,7 @@ def run(cfg: Config, supervisor=None, reason: str = "manual") -> dict:
         f"{files} files in {result['seconds']}s",
         "pzctl",
     )
+    notify.event(cfg, "backup", f"{target.name} ({result['size_mb']} MB, {reason})")
     return result
 
 
