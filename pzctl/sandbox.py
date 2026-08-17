@@ -100,7 +100,10 @@ def write(path: Path, changes: dict[str, Any]) -> list[str]:
         raise FileNotFoundError(path)
     # newline="" keeps the line endings intact; the default universal-newlines
     # mode would translate CRLF to LF and make the check below always fail.
-    text = path.read_text(encoding="utf-8", errors="replace", newline="")
+    # Path.open is used rather than Path.read_text(newline=...), which only
+    # accepts that argument on Python 3.13+.
+    with path.open(encoding="utf-8", errors="replace", newline="") as handle:
+        text = handle.read()
     newline = "\r\n" if "\r\n" in text else "\n"
     lines = text.splitlines()
     by_path = {entry.path: entry for entry in parse(path)}

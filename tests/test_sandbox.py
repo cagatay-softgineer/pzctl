@@ -8,6 +8,8 @@ from pathlib import Path
 
 from pzctl import sandbox
 
+from .helpers import read_raw
+
 # Mirrors the shape the server writes: one nesting level of sub-tables.
 SAMPLE = """SandboxVars = {
     VERSION = 5,
@@ -41,7 +43,7 @@ class TempSandboxTest(unittest.TestCase):
         self.path.write_text(SAMPLE, encoding="utf-8", newline="")
 
     def raw(self) -> str:
-        return self.path.read_text(encoding="utf-8", newline="")
+        return read_raw(self.path)
 
 
 class ParseTests(TempSandboxTest):
@@ -185,7 +187,7 @@ class NewlineTests(TempSandboxTest):
         crlf = self.dir / "crlf.lua"
         crlf.write_text(SAMPLE.replace("\n", "\r\n"), encoding="utf-8", newline="")
         sandbox.write(crlf, {"Zombies": 4})
-        text = crlf.read_text(encoding="utf-8", newline="")
+        text = read_raw(crlf)
         self.assertNotIn("\n", text.replace("\r\n", ""))
 
 
