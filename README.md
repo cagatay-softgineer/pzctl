@@ -135,3 +135,12 @@ and note that `pzctl.json` stores the admin and RCON passwords in cleartext.
 See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: standard library
 only — no new dependencies without discussion first, since the zero-dependency
 design is deliberate.
+
+## License
+
+[GNU General Public License v3.0](LICENSE).
+
+You may use, modify and redistribute pzctl, including commercially. If you
+distribute it — modified or not — you must do so under the same license and
+make the source available. Project Zomboid itself is not covered by this; pzctl
+ships only the control layer.
