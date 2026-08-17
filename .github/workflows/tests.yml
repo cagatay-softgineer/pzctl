@@ -43,3 +43,15 @@ jobs:
       # No dependencies to install: pzctl and its tests are standard library only.
       - name: Run tests
         run: python -m unittest discover -s tests -t . -v
+
+  web:
+    name: panel javascript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Python suite cannot see a syntax error in the panel's JavaScript --
+      # the file is served as a static asset, so a broken one only shows up as a
+      # blank panel in the browser. node is preinstalled on the runner.
+      - name: Check panel JavaScript parses
+        run: node --check pzctl/web/app.js
