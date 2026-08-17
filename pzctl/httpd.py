@@ -379,6 +379,14 @@ class Handler(BaseHTTPRequestHandler):
         body = self._body()
         self._json(logconfig.set_level(self.ctx.sup, body.get("type", ""), body.get("level", "")))
 
+    def api_access_level(self, params):
+        body = self._body()
+        self._json(
+            moderation.set_access_level(
+                self.ctx.sup, body.get("username", ""), body.get("level", "")
+            )
+        )
+
     def api_logs(self, params):
         self._json(
             {
@@ -430,6 +438,7 @@ ROUTES = {
     ("POST", "/api/backups/run"): Handler.api_run_backup,
     ("POST", "/api/backups/restore"): Handler.api_restore_backup,
     ("POST", "/api/moderate"): Handler.api_moderate,
+    ("POST", "/api/access-level"): Handler.api_access_level,
     ("GET", "/api/diagnose"): Handler.api_diagnose,
     ("POST", "/api/mods/check"): Handler.api_mod_check_start,
     ("GET", "/api/mods/check"): Handler.api_mod_check_poll,

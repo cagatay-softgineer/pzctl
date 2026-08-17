@@ -177,3 +177,64 @@ class ActTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AccessLevelTests(unittest.TestCase):
+    def test_sends_documented_command(self):
+        sup = FakeSupervisor()
+        result = moderation.set_access_level(sup, "rj", "moderator")
+        self.assertTrue(result["ok"])
+        self.assertEqual(sup.sent, ['setaccesslevel "rj" "moderator"'])
+
+    def test_none_demotes(self):
+        """`none` removes elevated access - there is no 'user' level."""
+        sup = FakeSupervisor()
+        moderation.set_access_level(sup, "rj", "none")
+        self.assertEqual(sup.sent, ['setaccesslevel "rj" "none"'])
+
+    def test_documented_levels(self):
+        self.assertEqual(
+            moderation.ACCESS_LEVELS,
+            ("admin", "moderator", "overseer", "gm", "observer", "none"),
+        )
+
+    def test_every_documented_level_is_accepted(self):
+        for level in moderation.ACCESS_LEVELS:
+            sup = FakeSupervisor()
+            self.assertTrue(moderation.set_access_level(sup, "rj", level)["ok"], level)
+
+    def test_level_is_lowercased(self):
+        sup = FakeSupervisor()
+        moderation.set_access_level(sup, "rj", "ADMIN")
+        self.assertEqual(sup.sent, ['setaccesslevel "rj" "admin"'])
+
+    def test_unknown_level_still_sent_for_the_server_to_judge(self):
+        sup = FakeSupervisor()
+        self.assertTrue(moderation.set_access_level(sup, "rj", "futurerole")["ok"])
+
+    def test_rejects_injection_in_the_level(self):
+        sup = FakeSupervisor()
+        for bad in ['admin" "x', "admin\nquit", "admin -flag", ""]:
+            self.assertFalse(moderation.set_access_level(sup, "rj", bad)["ok"], bad)
+        self.assertEqual(sup.sent, [])
+
+    def test_rejects_injection_in_the_username(self):
+        sup = FakeSupervisor()
+        result = moderation.set_access_level(sup, 'rj" "admin', "observer")
+        self.assertFalse(result["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_requires_a_running_server(self):
+        sup = FakeSupervisor(alive=False)
+        self.assertFalse(moderation.set_access_level(sup, "rj", "admin")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_is_logged_for_audit(self):
+        sup = FakeSupervisor()
+        moderation.set_access_level(sup, "rj", "admin")
+        self.assertTrue(any("access level" in text for text, _ in sup.emitted))
+
+    def test_failure_logged_as_error(self):
+        sup = FakeSupervisor(reply=(False, "nope"))
+        moderation.set_access_level(sup, "rj", "admin")
+        self.assertTrue(any(stream == "error" for _, stream in sup.emitted))

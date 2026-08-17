@@ -841,6 +841,25 @@ async function moderate(action, target, button) {
   refreshStatus();
 }
 
+$("#aclForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const username = $("#aclUser").value.trim();
+  const level = $("#aclLevel").value;
+  if (!username) return toast("enter a username", true);
+  if (level === "admin" && !window.confirm(
+      'Give "' + username + '" full admin?
+
+Admin can use every command, change server ' +
+      'settings and manage players.')) return;
+
+  const res = await api("/api/access-level", {
+    method: "POST",
+    body: { username: username, level: level },
+  });
+  if (res.ok) $("#aclUser").value = "";
+  toast(res.ok ? username + " -> " + level + " — " + (res.reply || "sent") : res.error, !res.ok);
+});
+
 $("#modForm").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const target = $("#modTarget").value.trim();
