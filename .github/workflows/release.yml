@@ -1,8 +1,18 @@
 name: release
 
+# Every merge to master publishes a release.
+#
+# If the merged commit already changed __version__ (a deliberate MINOR or MAJOR
+# bump) that version is released as-is. Otherwise the patch number is bumped
+# automatically and committed back, so a release always happens.
+#
+# Note this means docs-only and test-only merges also publish, and the panel's
+# update check will announce them to users. Tying releases to __version__
+# changes instead would keep those quiet.
 on:
   push:
-    tags: ["v*"]
+    branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,47 +23,87 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
-      # A tag must never produce a release from a broken tree.
+      - name: Read the version
+        id: version
+        run: |
+          VERSION=$(python -c "import pzctl; print(pzctl.__version__)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "pzctl/__init__.py declares $VERSION"
+
+      # An explicit bump in the merged PR wins. Only when the current version
+      # is already published does this invent the next patch number.
+      - name: Bump the patch version if this one is already released
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "v$VERSION was set deliberately and is unreleased - releasing it"
+            echo "release=go" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          NEXT="$MAJOR.$MINOR.$((PATCH + 1))"
+          echo "v$VERSION is already released - bumping to $NEXT"
+
+          sed -i -E "s/__version__ = \"[^\"]+\"/__version__ = \"$NEXT\"/" pzctl/__init__.py
+          grep -n "__version__" pzctl/__init__.py
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pzctl/__init__.py
+          git commit -m "Bump version to $NEXT [skip ci]"
+          git push origin HEAD:master
+
+          echo "version=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEXT" >> "$GITHUB_OUTPUT"
+          echo "release=go" >> "$GITHUB_OUTPUT"
+
       - name: Run tests
+        if: steps.check.outputs.release == 'go'
         run: python -m unittest discover -s tests -t .
 
-      # The panel and the startup banner both display __version__. If the tag
-      # disagreed with it, every install would report a version it is not.
-      - name: Check the tag matches __version__
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          CODE=$(python -c "import pzctl; print(pzctl.__version__)")
-          echo "tag=$TAG  __version__=$CODE"
-          if [ "$TAG" != "$CODE" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match __version__ ($CODE) in pzctl/__init__.py"
-            exit 1
-          fi
+      - name: Check panel JavaScript parses
+        if: steps.check.outputs.release == 'go'
+        run: node --check pzctl/web/app.js
 
       # Only the files a user drops into their server directory. Notably no
       # tests/, no .github/, and no pzctl.json - that one holds their secrets.
       - name: Build the drop-in zip
+        if: steps.check.outputs.release == 'go'
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.check.outputs.version || steps.version.outputs.version }}"
           STAGE="dist/pzctl-$VERSION"
           mkdir -p "$STAGE"
           cp -r pzctl "$STAGE/"
           find "$STAGE/pzctl" -name '__pycache__' -type d -prune -exec rm -rf {} +
-          cp PZ-Control.bat pzctl.json.example README.md LICENSE "$STAGE/"
+          cp PZ-Control.bat pzctl.json.example README.md LICENSE CHANGELOG.md "$STAGE/"
           (cd dist && zip -r "pzctl-$VERSION.zip" "pzctl-$VERSION")
           echo "--- zip contents ---"
           unzip -l "dist/pzctl-$VERSION.zip"
 
-      - name: Publish the release
+      - name: Tag and publish
+        if: steps.check.outputs.release == 'go'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" \
+          VERSION="${{ steps.check.outputs.version || steps.version.outputs.version }}"
+          TAG="${{ steps.check.outputs.tag || steps.version.outputs.tag }}"
+          git tag -a "$TAG" -m "pzctl $TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" \
             "dist/pzctl-$VERSION.zip" \
-            --title "$GITHUB_REF_NAME" \
+            --title "$TAG" \
             --generate-notes
