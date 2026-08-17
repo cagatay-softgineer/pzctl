@@ -9,7 +9,7 @@ import threading
 import time
 import webbrowser
 
-from . import httpd
+from . import __version__, httpd
 from .config import DATA_DIR, LOG_DIR, Config
 from .scheduler import Scheduler
 from .supervisor import Supervisor
@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         display_host = host
     url = f"http://{display_host}:{cfg.get('http.port')}/"
 
-    print(f"pzctl listening on http://{host}:{cfg.get('http.port')}/")
+    print(f"pzctl {__version__} listening on http://{host}:{cfg.get('http.port')}/")
     print(f"  panel:  {url}")
     print(f"  token:  {cfg.get('http.token')}   (needed only from other machines)")
     print(f"  config: {cfg.path}")

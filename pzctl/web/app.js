@@ -85,6 +85,8 @@ async function refreshStatus() {
   $("#statPlayers").textContent = st.state === "running" ? String(st.players) : "--";
   $("#statMem").textContent = st.memory_mb ? (st.memory_mb / 1024).toFixed(1) + " / " + (st.xmx || "?") : "--";
   $("#statRcon").textContent = st.rcon_ready ? "ready" : "off";
+  // Only ever set from the server, so what is shown is what is running.
+  if (st.version && !$("#pzVersion").textContent) $("#pzVersion").textContent = "v" + st.version;
 
   const alive = ACTIVE_STATES.includes(st.state);
   $('[data-act="start"]').disabled = alive || st.state === "backoff";

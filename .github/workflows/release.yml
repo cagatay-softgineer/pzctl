@@ -1,0 +1,59 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # A tag must never produce a release from a broken tree.
+      - name: Run tests
+        run: python -m unittest discover -s tests -t .
+
+      # The panel and the startup banner both display __version__. If the tag
+      # disagreed with it, every install would report a version it is not.
+      - name: Check the tag matches __version__
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          CODE=$(python -c "import pzctl; print(pzctl.__version__)")
+          echo "tag=$TAG  __version__=$CODE"
+          if [ "$TAG" != "$CODE" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match __version__ ($CODE) in pzctl/__init__.py"
+            exit 1
+          fi
+
+      # Only the files a user drops into their server directory. Notably no
+      # tests/, no .github/, and no pzctl.json - that one holds their secrets.
+      - name: Build the drop-in zip
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGE="dist/pzctl-$VERSION"
+          mkdir -p "$STAGE"
+          cp -r pzctl "$STAGE/"
+          find "$STAGE/pzctl" -name '__pycache__' -type d -prune -exec rm -rf {} +
+          cp PZ-Control.bat pzctl.json.example README.md LICENSE "$STAGE/"
+          (cd dist && zip -r "pzctl-$VERSION.zip" "pzctl-$VERSION")
+          echo "--- zip contents ---"
+          unzip -l "dist/pzctl-$VERSION.zip"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/pzctl-$VERSION.zip" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
