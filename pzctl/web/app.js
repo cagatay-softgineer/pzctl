@@ -1126,6 +1126,16 @@ $("#diagBtn").addEventListener("click", async () => {
   });
 });
 
+$("#logLevelForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const res = await api("/api/logs/level", {
+    method: "POST",
+    body: { type: $("#logLevelType").value, level: $("#logLevelValue").value },
+  });
+  // The server decides whether it knows the category, so report what it said.
+  toast(res.ok ? "log level sent — " + (res.reply || "no reply") : res.error, !res.ok);
+});
+
 $("#logSelect").addEventListener("change", showLog);
 $("#logRefresh").addEventListener("click", showLog);
 $("#logFollow").addEventListener("change", (ev) => {

@@ -228,6 +228,16 @@
           </div>
         </div>
         <div class="card">
+          <div class="card-head"><h2>Logging</h2></div>
+          <div class="fields">
+            <label>Enable categories (-debuglog)<textarea data-cfg="logging.debug" rows="3" spellcheck="false" placeholder="one per line, e.g. Network"></textarea></label>
+            <label>Disable categories (-disablelog)<textarea data-cfg="logging.disable" rows="3" spellcheck="false" placeholder="one per line, e.g. All"></textarea></label>
+          </div>
+          <p class="hint">Applied at launch, so they need a server restart. Category names are
+            the game's DebugType values — pzctl passes them through rather than guessing a list.
+            Common ones: All, General, Network, Sound, Lua, Mod.</p>
+        </div>
+        <div class="card">
           <div class="card-head"><h2>RCON</h2><button class="btn ghost tiny" id="rconTest">test</button></div>
           <div class="fields">
             <label class="check"><input type="checkbox" data-cfg="rcon.enabled"> Use RCON for commands</label>
@@ -295,6 +305,12 @@
         <button class="btn ghost tiny" id="diagBtn">diagnose crash</button>
         <span class="hint" id="logMeta"></span>
       </div>
+      <form class="modform" id="logLevelForm">
+        <input id="logLevelType" placeholder="category, e.g. Network" autocomplete="off" spellcheck="false">
+        <input id="logLevelValue" placeholder="level, e.g. Debug" autocomplete="off" spellcheck="false">
+        <button class="btn ghost" type="submit">Set level</button>
+        <span class="hint">changes logging on the running server</span>
+      </form>
       <div id="diagResult" class="diag"></div>
       <div id="logView" class="console"></div>
     </div>

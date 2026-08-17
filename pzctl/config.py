@@ -44,6 +44,8 @@ def defaults() -> dict:
             "stop_timeout_sec": 90,
         },
         "rcon": {"enabled": True, "host": "127.0.0.1", "port": 27015, "password": ""},
+        # DebugType categories for -debuglog / -disablelog at launch.
+        "logging": {"debug": [], "disable": []},
         # Each entry: {"time": "HH:MM", "enabled": true, "warn_minutes": [...]}
         "schedule": {"restarts": [], "backups": []},
         "backup": {
