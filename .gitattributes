@@ -4,3 +4,11 @@
 
 # Batch files are the mirror image: CRLF, since that is what cmd.exe expects.
 *.bat text eol=crlf
+
+# Everything a Linux container reads must be LF. A Dockerfile with CRLF appends
+# a stray carriage return to each RUN line, which fails as "command not found".
+Dockerfile text eol=lf
+*.dockerignore text eol=lf
+.dockerignore text eol=lf
+docker-compose.yml text eol=lf
+*.yml text eol=lf

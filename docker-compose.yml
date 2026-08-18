@@ -1,0 +1,29 @@
+services:
+  pzctl:
+    build: .
+    image: pzctl:local
+    container_name: pzctl
+
+    ports:
+      - "8077:8077"        # the panel
+      - "16261:16261/udp"  # the game
+      - "16262:16262/udp"
+
+    volumes:
+      - pz-server:/pz      # the dedicated server install and its Workshop mods
+      - pz-data:/data      # worlds, server config, backups
+
+    environment:
+      # Set to 0 to pin the server version instead of updating on every start.
+      UPDATE_ON_START: "1"
+
+    # pzctl stops the game server cleanly on SIGTERM, but that takes time: it
+    # waits up to supervisor.stop_timeout_sec (90s by default) for the world to
+    # save. Docker's default grace period is 10s, which would cut the save off.
+    stop_grace_period: 120s
+
+    restart: unless-stopped
+
+volumes:
+  pz-server:
+  pz-data:

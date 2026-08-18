@@ -55,3 +55,46 @@ jobs:
       # blank panel in the browser. node is preinstalled on the runner.
       - name: Check panel JavaScript parses
         run: node --check pzctl/web/app.js
+
+  docker:
+    name: docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Builds the image but does not run the server: SteamCMD would pull a
+      # multi-gigabyte game download on every CI run. What this proves is that
+      # the image builds, steamcmd installs, and python3 is new enough.
+      - name: Build the image
+        run: docker build -t pzctl:ci .
+
+      - name: Check the image has what pzctl needs
+        run: |
+          docker run --rm --entrypoint sh pzctl:ci -c '
+            set -eux
+            command -v steamcmd
+            python3 --version
+            python3 -c "import sys; assert sys.version_info >= (3, 11), sys.version"
+            test -d /opt/pzctl-src/pzctl
+            test -x /usr/local/bin/entrypoint.sh
+          '
+
+      # SERVER_DIR comes from the package location, so pzctl copied into the
+      # server directory must resolve its own paths correctly - including the
+      # Workshop root, which walks two levels up and fails silently if wrong.
+      - name: Check the path layout resolves
+        run: |
+          docker run --rm --entrypoint sh pzctl:ci -c '
+            set -eu
+            mkdir -p /pz/steamapps/common/pzserver
+            cp -r /opt/pzctl-src/pzctl /pz/steamapps/common/pzserver/pzctl
+            cd /pz/steamapps/common/pzserver
+            python3 - <<PY
+          from pzctl.config import SERVER_DIR
+          from pzctl.mods import WORKSHOP_ROOT
+          assert str(SERVER_DIR) == "/pz/steamapps/common/pzserver", SERVER_DIR
+          assert str(WORKSHOP_ROOT) == "/pz/steamapps/workshop/content/108600", WORKSHOP_ROOT
+          print("SERVER_DIR   ", SERVER_DIR)
+          print("WORKSHOP_ROOT", WORKSHOP_ROOT)
+          PY
+          '
