@@ -378,3 +378,39 @@ class BroadcastTests(unittest.TestCase):
 
     def test_requires_running_server(self):
         self.assertFalse(gm.broadcast(FakeSupervisor(alive=False), "hi")["ok"])
+
+
+class AddKeyTests(unittest.TestCase):
+    def test_sends_the_documented_command(self):
+        sup = FakeSupervisor()
+        self.assertTrue(gm.add_key(sup, "rj", "7295")["ok"])
+        self.assertEqual(sup.sent, ['addkey "rj" "7295"'])
+
+    def test_optional_label(self):
+        sup = FakeSupervisor()
+        gm.add_key(sup, "rj", "7295", "Front door")
+        self.assertEqual(sup.sent, ['addkey "rj" "7295" "Front door"'])
+
+    def test_label_breakout_characters_stripped(self):
+        sup = FakeSupervisor()
+        gm.add_key(sup, "rj", "7295", 'a"b\nc')
+        self.assertEqual(sup.sent, ['addkey "rj" "7295" "abc"'])
+
+    def test_missing_key_id(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.add_key(sup, "rj", "")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_key_id_injection_refused(self):
+        sup = FakeSupervisor()
+        for bad in ('7295" ; quit', "7295 quit", "72\n95"):
+            self.assertFalse(gm.add_key(sup, "rj", bad)["ok"], bad)
+        self.assertEqual(sup.sent, [])
+
+    def test_username_injection_refused(self):
+        sup = FakeSupervisor()
+        self.assertFalse(gm.add_key(sup, 'rj" "x', "7295")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_requires_a_running_server(self):
+        self.assertFalse(gm.add_key(FakeSupervisor(alive=False), "rj", "7295")["ok"])

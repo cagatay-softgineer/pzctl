@@ -2,3 +2,8 @@ pzctl.json
 pzctl-data/
 __pycache__/
 *.pyc
+# Left behind by the in-panel upgrade: the package it replaced, kept for rollback.
+pzctl.previous-*/
+# Left behind by a backup restore, if the save folder is ever inside the repo.
+*.replaced-*/
+dist/

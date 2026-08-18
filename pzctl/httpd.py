@@ -536,6 +536,12 @@ class Handler(BaseHTTPRequestHandler):
     def api_tunnel_stop(self, params):
         self._json(tunnel.stop(self.ctx.sup))
 
+    def api_add_key(self, params):
+        b = self._body()
+        self._json(
+            gm.add_key(self.ctx.sup, b.get("username", ""), b.get("key_id", ""), b.get("name", ""))
+        )
+
     def api_logs(self, params):
         self._json(
             {
@@ -594,6 +600,7 @@ ROUTES = {
     ("GET", "/api/server/update"): Handler.api_server_update_status,
     ("POST", "/api/gm/addxp"): Handler.api_add_xp,
     ("POST", "/api/gm/additem"): Handler.api_add_item,
+    ("POST", "/api/gm/addkey"): Handler.api_add_key,
     ("GET", "/api/game/items"): Handler.api_game_items,
     ("GET", "/api/game/vehicles"): Handler.api_game_vehicles,
     ("POST", "/api/gm/addvehicle"): Handler.api_add_vehicle,

@@ -313,3 +313,37 @@ def broadcast(supervisor, message: str) -> dict:
 
     ok, reply = supervisor.send_command(f'servermsg "{text}"', prefer="auto")
     return {"ok": ok, "message": text, "reply": reply}
+
+
+def add_key(supervisor, username: str, key_id: str, name: str = "") -> dict:
+    """Give a player a key.
+
+    The game documents this as `addkey "username" "keyId" "name"`, with the
+    name optional. keyId identifies the door or container the key opens; pzctl
+    has no way to enumerate those, so it is entered by hand and the server
+    decides whether it means anything.
+    """
+    username = str(username or "").strip()
+    key_id = str(key_id or "").strip()
+    label = clean_text(name)
+
+    problem = validate_name(username)
+    if problem:
+        return {"ok": False, "error": problem}
+    if not key_id:
+        return {"ok": False, "error": "no key id given"}
+    if not re.match(r"^[A-Za-z0-9_.-]+$", key_id):
+        return {"ok": False, "error": f"invalid key id: {key_id!r}"}
+
+    if supervisor is None or not supervisor.is_alive():
+        return {"ok": False, "error": "server is not running"}
+
+    command = f'addkey "{username}" "{key_id}"'
+    if label:
+        command += f' "{label}"'
+
+    supervisor.emit(f"gm: giving key {key_id} to {username!r}", "pzctl")
+    ok, reply = supervisor.send_command(command, prefer="auto")
+    if not ok:
+        supervisor.emit(f"gm: addkey for {username!r} FAILED - {reply}", "error")
+    return {"ok": ok, "username": username, "key_id": key_id, "name": label, "reply": reply}
