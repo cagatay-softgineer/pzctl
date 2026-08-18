@@ -686,6 +686,7 @@ function markCfgDirty() { $("#cfgDirty").textContent = "unsaved changes"; }
 
 LOADERS.launcher = async function () {
   loadProfiles();
+  refreshTunnel();
   const data = await api("/api/config/launcher");
   if (!data.ok) return toast(data.error || "load failed", true);
   cfgData = data.config;
@@ -941,6 +942,50 @@ $("#profileForm").addEventListener("submit", async (ev) => {
   $("#profileName").value = "";
   toast("created " + res.name + " — " + res.note);
   loadProfiles();
+});
+
+/* ── remote access ─────────────────────────────────────────── */
+
+async function refreshTunnel() {
+  const data = await api("/api/tunnel");
+  const state = $("#tunnelState");
+  const link = $("#tunnelUrl");
+  if (!data.ok) return;
+  if (data.running) {
+    state.textContent = data.mode === "named" ? "named tunnel running" : "temporary tunnel running";
+    if (data.url) {
+      link.textContent = data.url;
+      link.href = data.url;
+      link.classList.add("on");
+    } else {
+      link.classList.remove("on");
+      state.textContent += " — waiting for the address";
+    }
+  } else {
+    state.textContent = data.error || "not running";
+    link.classList.remove("on");
+  }
+}
+
+$("#tunnelStart").addEventListener("click", async () => {
+  // Exposing the panel is the one action here with consequences outside the
+  // machine, so it says exactly what it is doing before doing it.
+  if (!window.confirm(
+    "Publish this panel on the internet?\n\n" +
+    "Anyone with the access token will be able to control your server.\n\n" +
+    "Only do this if you understand that."
+  )) return;
+  const res = await api("/api/tunnel/start", { method: "POST", body: { confirm: true } });
+  if (!res.ok) return toast(res.error || "could not start", true);
+  toast(res.warning, true);
+  setTimeout(refreshTunnel, 1500);
+  setTimeout(refreshTunnel, 5000);
+});
+
+$("#tunnelStop").addEventListener("click", async () => {
+  const res = await api("/api/tunnel/stop", { method: "POST", body: {} });
+  toast(res.ok ? "tunnel stopped" : res.error, !res.ok);
+  refreshTunnel();
 });
 
 /* ── notifications ─────────────────────────────────────────── */
