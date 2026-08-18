@@ -64,6 +64,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  token:  {cfg.get('http.token')}   (needed only from other machines)")
     print(f"  config: {cfg.path}")
     print("  Ctrl+C to shut down (the game server is stopped cleanly first)")
+    print("  SIGTERM does the same, so `docker stop` and systemd stop cleanly too")
 
     if not args.no_schedule:
         sched.start()
@@ -82,11 +83,18 @@ def main(argv: list[str] | None = None) -> int:
             return
         stopping.set()
 
-    signal.signal(signal.SIGINT, _shutdown)
-    try:
-        signal.signal(signal.SIGBREAK, _shutdown)  # type: ignore[attr-defined]
-    except AttributeError:
-        pass
+    # SIGTERM is what `docker stop`, systemd and `kill` send. Without a handler
+    # for it the process is killed outright and the world never gets its final
+    # save, so it matters as much as Ctrl+C does.
+    for name in ("SIGINT", "SIGTERM", "SIGBREAK", "SIGHUP"):
+        handler = getattr(signal, name, None)
+        if handler is None:
+            continue  # SIGBREAK is Windows-only, SIGHUP is not
+        try:
+            signal.signal(handler, _shutdown)
+        except (OSError, ValueError):
+            # Some signals cannot be caught in every context; the rest still are.
+            pass
 
     try:
         while not stopping.wait(0.5):
