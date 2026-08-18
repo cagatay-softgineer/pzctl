@@ -1,0 +1,12 @@
+.git
+.github
+tests
+docs
+*.md
+!README.md
+pzctl-data
+pzctl.json
+pzctl.previous-*
+dist
+__pycache__
+*.pyc
