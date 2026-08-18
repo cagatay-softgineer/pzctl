@@ -366,6 +366,25 @@
         </div>
         <div class="card">
           <div class="card-head">
+            <h2>Remote access</h2>
+            <span class="hint" id="tunnelState"></span>
+          </div>
+          <div class="fields">
+            <label>cloudflared path (blank = find on PATH)<input data-cfg="tunnel.cloudflared_path" placeholder="cloudflared"></label>
+            <label>Tunnel token (blank = temporary URL)<input data-cfg="tunnel.token" type="password" placeholder="named tunnel token"></label>
+          </div>
+          <div class="modcheck">
+            <button class="btn" id="tunnelStart">Start tunnel</button>
+            <button class="btn ghost" id="tunnelStop">Stop</button>
+            <a id="tunnelUrl" class="vernew" href="#" target="_blank" rel="noopener"></a>
+          </div>
+          <p class="hint">Publishes this panel on the internet over HTTPS. <b>The access token
+            becomes the only thing protecting your server</b> &mdash; anyone who has it can
+            control it. With a token set you get a stable hostname; without one, a temporary
+            address that changes each time.</p>
+        </div>
+        <div class="card">
+          <div class="card-head">
             <h2>Notifications</h2>
             <button class="btn ghost tiny" id="notifyTest">test</button>
           </div>

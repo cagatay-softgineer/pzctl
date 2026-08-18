@@ -35,6 +35,7 @@ from . import (
     rcon,
     sandbox,
     serverupdate,
+    tunnel,
     updates,
     upgrade,
     whitelist,
@@ -524,6 +525,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": False, "error": "no Discord webhook configured"})
         self._json(notify.send(cfg, f"✅ **{cfg.get('server_name')}** pzctl test message", blocking=True))
 
+    def api_tunnel_status(self, params):
+        self._json(tunnel.status())
+
+    def api_tunnel_start(self, params):
+        if self._body().get("confirm") is not True:
+            return self._error(400, "starting a tunnel exposes the panel; confirm: true required")
+        self._json(tunnel.start(self.ctx.cfg, self.ctx.sup))
+
+    def api_tunnel_stop(self, params):
+        self._json(tunnel.stop(self.ctx.sup))
+
     def api_logs(self, params):
         self._json(
             {
@@ -595,6 +607,9 @@ ROUTES = {
     ("POST", "/api/profiles/switch"): Handler.api_switch_profile,
     ("POST", "/api/profiles/create"): Handler.api_create_profile,
     ("POST", "/api/notify/test"): Handler.api_notify_test,
+    ("GET", "/api/tunnel"): Handler.api_tunnel_status,
+    ("POST", "/api/tunnel/start"): Handler.api_tunnel_start,
+    ("POST", "/api/tunnel/stop"): Handler.api_tunnel_stop,
     ("GET", "/api/perf"): Handler.api_perf,
     ("POST", "/api/perf/network"): Handler.api_set_network,
     ("POST", "/api/perf/gclog"): Handler.api_set_gc_logging,

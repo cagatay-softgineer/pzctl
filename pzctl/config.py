@@ -42,6 +42,9 @@ def defaults() -> dict:
                 "restart_warning": True,
             },
         },
+        # Cloudflare Tunnel. A token means a named tunnel with a stable
+        # hostname; without one, an ephemeral trycloudflare URL.
+        "tunnel": {"cloudflared_path": "", "token": "", "autostart": False},
         "steamcmd_path": "",
         "steam_app_id": "380870",
         "java": {
