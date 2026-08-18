@@ -5,6 +5,10 @@
 Supervisor daemon + web control panel for a Project Zomboid dedicated server.
 Pure Python 3.11+ standard library — nothing to install, no dependencies.
 
+Developed against a Windows dedicated server. Linux and macOS are supported by
+the code and exercised by CI, but have not been run against a live server — see
+[#13](https://github.com/cagatay-softgineer/pzctl/issues/13).
+
 Full documentation lives in the [wiki](https://github.com/cagatay-softgineer/pzctl/wiki)
 — configuration reference, RCON setup, and troubleshooting. Planned work is
 sequenced on the [roadmap board](https://github.com/users/cagatay-softgineer/projects/2).
@@ -26,7 +30,8 @@ defaults (and a fresh random token) on first launch.
 
 ## Run it
 
-Double-click `PZ-Control.bat` in the server folder, or:
+Double-click `PZ-Control.bat` (Windows) or run `./pz-control.sh` (Linux/macOS)
+in the server folder, or:
 
 ```
 python -m pzctl --open
