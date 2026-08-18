@@ -1,3 +1,3 @@
 """pzctl - supervisor daemon and web control panel for a Project Zomboid dedicated server."""
 
-__version__ = "1.2.12"
+__version__ = "1.2.11"

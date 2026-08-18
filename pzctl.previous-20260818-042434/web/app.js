@@ -1561,15 +1561,6 @@ $("#itemSearch").addEventListener("input", () => {
   itemTimer = setTimeout(searchItems, 250);
 });
 
-$("#keyForm").addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  const res = await api("/api/gm/addkey", {
-    method: "POST",
-    body: { username: $("#keyUser").value, key_id: $("#keyId").value, name: $("#keyName").value },
-  });
-  toast(res.ok ? "key " + res.key_id + " to " + res.username : res.error, !res.ok);
-});
-
 $("#itemForm").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   if (!itemPick) return toast("pick an item from the search results first", true);
