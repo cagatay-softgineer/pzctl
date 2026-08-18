@@ -158,11 +158,17 @@ class AddUserTests(WhitelistTestCase):
         whitelist.add_user(sup, "bob", "x")
         self.assertTrue(any("bob" in text for text, _ in sup.emitted))
 
-    def test_empty_password_rejected(self):
+    def test_password_is_optional(self):
+        """The game documents it as optional; pzctl used to demand one."""
         sup = FakeSupervisor()
         result = whitelist.add_user(sup, "bob", "")
-        self.assertFalse(result["ok"])
-        self.assertEqual(sup.sent, [])
+        self.assertTrue(result["ok"])
+        self.assertEqual(sup.sent[0][0], 'adduser "bob"')
+
+    def test_omitted_password_is_not_sent_as_an_empty_pair(self):
+        sup = FakeSupervisor()
+        whitelist.add_user(sup, "bob", "")
+        self.assertNotIn('""', sup.sent[0][0])
 
     def test_password_with_quote_rejected(self):
         sup = FakeSupervisor()
@@ -217,3 +223,33 @@ class RemoveUserTests(WhitelistTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ApproveConnectedTests(WhitelistTestCase):
+    def test_approves_one_player(self):
+        sup = FakeSupervisor()
+        result = whitelist.approve_connected(sup, "bob")
+        self.assertTrue(result["ok"])
+        self.assertEqual(sup.sent[0][0], 'addusertowhitelist "bob"')
+
+    def test_approves_everyone_connected(self):
+        """No username means all currently connected accounts."""
+        sup = FakeSupervisor()
+        result = whitelist.approve_connected(sup)
+        self.assertTrue(result["all"])
+        self.assertEqual(sup.sent[0][0], "addalltowhitelist")
+
+    def test_injection_refused(self):
+        sup = FakeSupervisor()
+        self.assertFalse(whitelist.approve_connected(sup, 'bob" ; quit')["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_requires_a_running_server(self):
+        sup = FakeSupervisor(alive=False)
+        self.assertFalse(whitelist.approve_connected(sup, "bob")["ok"])
+        self.assertEqual(sup.sent, [])
+
+    def test_is_logged(self):
+        sup = FakeSupervisor()
+        whitelist.approve_connected(sup, "bob")
+        self.assertTrue(any("whitelist:" in text for text, _ in sup.emitted))

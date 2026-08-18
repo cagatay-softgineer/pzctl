@@ -27,8 +27,7 @@ REDACTED = "********"
 
 
 def _validate_password(password: str) -> str | None:
-    if not password:
-        return "no password given"
+    """The game documents the password as optional, so an empty one is fine."""
     if re.search(r'["\r\n]', password):
         return "password contains characters that are not allowed"
     return None
@@ -71,11 +70,14 @@ def add_user(supervisor, username: str, password: str) -> dict:
         return {"ok": False, "error": "server is not running"}
 
     supervisor.emit(f"whitelist: adding user {username!r}", "pzctl")
-    ok, reply = supervisor.send_command(
-        f'adduser "{username}" "{password}"',
-        prefer="auto",
-        echo_as=f'adduser "{username}" "{REDACTED}"',
-    )
+    # Password is optional per the game's own description; omit it entirely
+    # rather than sending an empty pair.
+    command = f'adduser "{username}"'
+    shown = command
+    if password:
+        command += f' "{password}"'
+        shown += f' "{REDACTED}"'
+    ok, reply = supervisor.send_command(command, prefer="auto", echo_as=shown)
     if not ok:
         supervisor.emit(f"whitelist: adding {username!r} FAILED - {reply}", "error")
     return {"ok": ok, "action": "add", "username": username, "reply": reply}
@@ -93,3 +95,37 @@ def remove_user(supervisor, username: str) -> dict:
     if not ok:
         supervisor.emit(f"whitelist: removing {username!r} FAILED - {reply}", "error")
     return {"ok": ok, "action": "remove", "username": username, "reply": reply}
+
+
+def approve_connected(supervisor, username: str = "") -> dict:
+    """Add players who connected with a password to the whitelist.
+
+    The game's answer to "someone is playing but has no protected account":
+
+        addusertowhitelist "username"   one player
+        addalltowhitelist              everyone currently connected
+
+    This is closer to what a pending-join queue was after than watching the log
+    for rejections - it works from who is actually on the server rather than
+    from a log format nobody has confirmed.
+    """
+    username = str(username or "").strip()
+    if username:
+        problem = validate_name(username)
+        if problem:
+            return {"ok": False, "error": problem}
+
+    if supervisor is None or not supervisor.is_alive():
+        return {"ok": False, "error": "server is not running"}
+
+    if username:
+        command = f'addusertowhitelist "{username}"'
+        supervisor.emit(f"whitelist: protecting account for {username!r}", "pzctl")
+    else:
+        command = "addalltowhitelist"
+        supervisor.emit("whitelist: protecting all connected accounts", "pzctl")
+
+    ok, reply = supervisor.send_command(command, prefer="auto")
+    if not ok:
+        supervisor.emit(f"whitelist: {command} FAILED - {reply}", "error")
+    return {"ok": ok, "username": username or None, "all": not username, "reply": reply}
