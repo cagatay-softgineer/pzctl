@@ -542,6 +542,9 @@ class Handler(BaseHTTPRequestHandler):
             gm.add_key(self.ctx.sup, b.get("username", ""), b.get("key_id", ""), b.get("name", ""))
         )
 
+    def api_whitelist_approve(self, params):
+        self._json(whitelist.approve_connected(self.ctx.sup, self._body().get("username", "")))
+
     def api_logs(self, params):
         self._json(
             {
@@ -631,6 +634,7 @@ ROUTES = {
     ("GET", "/api/whitelist"): Handler.api_whitelist,
     ("POST", "/api/whitelist/mode"): Handler.api_whitelist_mode,
     ("POST", "/api/whitelist/user"): Handler.api_whitelist_user,
+    ("POST", "/api/whitelist/approve"): Handler.api_whitelist_approve,
     ("GET", "/api/updates"): Handler.api_check_updates,
     ("POST", "/api/updates/apply"): Handler.api_upgrade,
     ("POST", "/api/logs/level"): Handler.api_log_level,

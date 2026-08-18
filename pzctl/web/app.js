@@ -1684,6 +1684,17 @@ async function whitelistUser(action) {
   toast(res.ok ? action + " " + username + " — " + (res.reply || "sent") : res.error, !res.ok);
 }
 
+async function approveWhitelist(username) {
+  const res = await api("/api/whitelist/approve", { method: "POST", body: { username: username } });
+  toast(res.ok ? (res.all ? "all connected accounts protected" : username + " protected") : res.error, !res.ok);
+}
+$("#wlApprove").addEventListener("click", () => {
+  const name = $("#wlUser").value.trim();
+  if (!name) return toast("enter a username first", true);
+  approveWhitelist(name);
+});
+$("#wlApproveAll").addEventListener("click", () => approveWhitelist(""));
+
 $("#wlForm").addEventListener("submit", (ev) => {
   ev.preventDefault();
   whitelistUser("add");
