@@ -1,0 +1,6 @@
+# Shell scripts must keep LF endings. A .sh checked out with CRLF fails on
+# Linux with a "bad interpreter" error that names the wrong problem.
+*.sh text eol=lf
+
+# Batch files are the mirror image: CRLF, since that is what cmd.exe expects.
+*.bat text eol=crlf
