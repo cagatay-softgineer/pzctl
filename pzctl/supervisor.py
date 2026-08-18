@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import ctypes
-import ctypes.wintypes as wintypes
 import os
+import sys
 import queue
 import re
 import subprocess
@@ -28,26 +27,52 @@ CRASHED = "crashed"
 CONSOLE_HISTORY = 4000
 READY_MARKERS = ("SERVER STARTED", "Server Steam ID")
 PLAYER_COUNT_RE = re.compile(r"\((\d+)\)")
-CREATE_NO_WINDOW = 0x08000000
+IS_WINDOWS = sys.platform.startswith("win")
+# Suppresses the console window the JVM would otherwise pop up. Windows only;
+# passing it elsewhere raises.
+CREATE_NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
+
+if IS_WINDOWS:
+    import ctypes
+    import ctypes.wintypes as wintypes
 
 
-class _ProcessMemoryCounters(ctypes.Structure):
-    _fields_ = [
-        ("cb", wintypes.DWORD),
-        ("PageFaultCount", wintypes.DWORD),
-        ("PeakWorkingSetSize", ctypes.c_size_t),
-        ("WorkingSetSize", ctypes.c_size_t),
-        ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
-        ("QuotaPagedPoolUsage", ctypes.c_size_t),
-        ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
-        ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
-        ("PagefileUsage", ctypes.c_size_t),
-        ("PeakPagefileUsage", ctypes.c_size_t),
-    ]
+if IS_WINDOWS:
+    class _ProcessMemoryCounters(ctypes.Structure):
+        _fields_ = [
+            ("cb", wintypes.DWORD),
+            ("PageFaultCount", wintypes.DWORD),
+            ("PeakWorkingSetSize", ctypes.c_size_t),
+            ("WorkingSetSize", ctypes.c_size_t),
+            ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+            ("PagefileUsage", ctypes.c_size_t),
+            ("PeakPagefileUsage", ctypes.c_size_t),
+        ]
 
 
 def _working_set_bytes(pid: int) -> int:
-    """Resident memory of `pid`, or 0 if it cannot be read."""
+    """Resident memory of `pid`, or 0 if it cannot be read.
+
+    Windows exposes this through psapi; Linux through /proc/<pid>/status,
+    where VmRSS is the same figure in kilobytes. Anywhere else, memory is
+    simply not reported rather than guessed at.
+    """
+    if IS_WINDOWS:
+        return _working_set_windows(pid)
+    try:
+        with open(f"/proc/{pid}/status", encoding="utf-8") as handle:
+            for line in handle:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    return 0
+
+
+def _working_set_windows(pid: int) -> int:
     PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
     PROCESS_VM_READ = 0x0010
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -65,6 +90,12 @@ def _working_set_bytes(pid: int) -> int:
         return 0
     finally:
         kernel32.CloseHandle(handle)
+
+
+def java_path() -> Path:
+    """The bundled JVM. The dedicated server ships jre64 on both platforms."""
+    name = "java.exe" if IS_WINDOWS else "java"
+    return SERVER_DIR / "jre64" / "bin" / name
 
 
 class Supervisor:
@@ -139,7 +170,7 @@ class Supervisor:
 
     def build_command(self) -> list[str]:
         cfg = self.cfg
-        java = SERVER_DIR / "jre64" / "bin" / "java.exe"
+        java = java_path()
         args = [
             str(java),
             "-Djava.awt.headless=true",
@@ -159,7 +190,13 @@ class Supervisor:
         if xmx:
             args.append(f"-Xmx{xmx}")
         args.extend(str(a) for a in (cfg.get("java.extra_args") or []) if str(a).strip())
-        args += ["-cp", "java/;java/projectzomboid.jar", "zombie.network.GameServer"]
+        # The classpath separator is ; on Windows and : elsewhere; getting it
+        # wrong makes the JVM silently fail to find the server class.
+        args += [
+            "-cp",
+            os.pathsep.join(("java/", "java/projectzomboid.jar")),
+            "zombie.network.GameServer",
+        ]
         args += ["-statistic", "0", "-servername", str(cfg.get("server_name"))]
         args += logconfig.launch_args(cfg)
         if not cfg.get("steam"):
@@ -179,7 +216,7 @@ class Supervisor:
         with self._lock:
             if self.state in (STARTING, RUNNING, STOPPING):
                 return False, f"server is already {self.state}"
-            java = SERVER_DIR / "jre64" / "bin" / "java.exe"
+            java = java_path()
             if not java.exists():
                 return False, f"java runtime not found at {java}"
             if not (self.cfg.get("admin_password") or "").strip():
@@ -205,7 +242,8 @@ class Supervisor:
                     errors="replace",
                     bufsize=1,
                     env=env,
-                    creationflags=CREATE_NO_WINDOW,
+                    # Only Windows accepts creationflags.
+                    **({"creationflags": CREATE_NO_WINDOW} if IS_WINDOWS else {}),
                 )
             except OSError as exc:
                 self.state = CRASHED

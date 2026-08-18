@@ -89,7 +89,8 @@ jobs:
           mkdir -p "$STAGE"
           cp -r pzctl "$STAGE/"
           find "$STAGE/pzctl" -name '__pycache__' -type d -prune -exec rm -rf {} +
-          cp PZ-Control.bat pzctl.json.example README.md LICENSE CHANGELOG.md "$STAGE/"
+          cp PZ-Control.bat pz-control.sh pzctl.json.example README.md LICENSE CHANGELOG.md "$STAGE/"
+          chmod +x "$STAGE/pz-control.sh"
           (cd dist && zip -r "pzctl-$VERSION.zip" "pzctl-$VERSION")
           echo "--- zip contents ---"
           unzip -l "dist/pzctl-$VERSION.zip"
