@@ -12,6 +12,7 @@ import os
 import tempfile
 import time
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from pzctl import sysres
@@ -144,21 +145,67 @@ class SampleTests(SamplerTestCase):
         self.assertIsNone(sample["cpu_system"])
         self.assertIsNone(sample["net_in_bps"])
 
+    def drive(self, sampler, *, process, system, network):
+        """Feed the sampler chosen counter readings.
+
+        The rate arithmetic used to be tested by sampling twice around a short
+        sleep. That is flaky on a shared CI runner: `/proc/stat` advances in
+        clock ticks, and across a brief sleep on a loaded machine it can read
+        identically twice, leaving a zero interval and no percentage. Injecting
+        the counters tests the same arithmetic with none of the timing.
+        """
+        self.enterContext(unittest.mock.patch.object(
+            sysres, "_process_cpu_seconds", side_effect=list(process)))
+        self.enterContext(unittest.mock.patch.object(
+            sysres, "_system_cpu_times", side_effect=list(system)))
+        self.enterContext(unittest.mock.patch.object(
+            sysres, "_network_octets", side_effect=list(network)))
+        return sampler
+
     def test_second_sample_has_rates(self):
-        sampler = sysres.Sampler(self.cfg, FakeSupervisor())
+        sampler = self.drive(
+            sysres.Sampler(self.cfg, FakeSupervisor()),
+            # One second of wall clock, during which the process used half a
+            # second of CPU and the machine was busy for one second of four.
+            process=[10.0, 10.5],
+            system=[(100.0, 400.0), (101.0, 404.0)],
+            network=[(1000, 2000), (3000, 6000)],
+        )
         sampler.sample()
-        time.sleep(0.15)
+        time.sleep(0.05)
         sample = sampler.sample()
+
         self.assertIsNotNone(sample["cpu_system"])
         self.assertIsNotNone(sample["cpu_process"])
-        self.assertGreaterEqual(sample["cpu_process"], 0)
+        self.assertIsNotNone(sample["net_in_bps"])
+        # busy 1.0s of 4.0s total, regardless of how long the sleep really was.
+        self.assertEqual(sample["cpu_system"], 25.0)
 
-    def test_cpu_percentages_stay_within_bounds(self):
-        sampler = sysres.Sampler(self.cfg, FakeSupervisor())
+    def test_process_cpu_is_scaled_across_all_cores(self):
+        """One fully-used core on a four-core box is 25%, not 100%."""
+        elapsed = 1.0
+        sampler = self.drive(
+            sysres.Sampler(self.cfg, FakeSupervisor()),
+            process=[0.0, elapsed],           # one core saturated
+            system=[(0.0, 0.0), (1.0, 4.0)],
+            network=[(0, 0), (0, 0)],
+        )
+        with unittest.mock.patch.object(sysres, "cpu_count", return_value=4):
+            sampler.sample()
+            time.sleep(elapsed)
+            sample = sampler.sample()
+        self.assertAlmostEqual(sample["cpu_process"], 25.0, delta=2.0)
+
+    def test_cpu_percentages_are_clamped_to_100(self):
+        """A counter jumping more than wall clock must not read above 100%."""
+        sampler = self.drive(
+            sysres.Sampler(self.cfg, FakeSupervisor()),
+            process=[0.0, 9999.0],
+            system=[(0.0, 0.0), (9999.0, 9999.0)],
+            network=[(0, 0), (0, 0)],
+        )
         sampler.sample()
-        deadline = time.time() + 0.3
-        while time.time() < deadline:
-            pass
+        time.sleep(0.05)
         sample = sampler.sample()
         for key in ("cpu_process", "cpu_system"):
             self.assertGreaterEqual(sample[key], 0.0, key)
