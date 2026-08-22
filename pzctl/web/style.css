@@ -233,7 +233,8 @@ label.check input{width:auto}
 @keyframes slide{from{transform:translateX(20px);opacity:0}}
 
 /* ── resource trends ───────────────────────────────────── */
-.res-card{margin-top:16px}
+/* Sits at the top of the dashboard, above the console. */
+.res-card{margin-bottom:16px}
 .res-legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dim);
   letter-spacing:.06em;text-transform:uppercase}
 .res-legend i{width:9px;height:2px;border-radius:2px;background:var(--accent);
