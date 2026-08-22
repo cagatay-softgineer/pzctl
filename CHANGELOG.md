@@ -23,7 +23,9 @@ Releases live on the [Releases page](https://github.com/cagatay-softgineer/pzctl
 
 ---
 
-## Unreleased
+## v1.3.0
+
+Resource monitoring.
 
 ### Added
 
