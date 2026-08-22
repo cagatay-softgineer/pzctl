@@ -30,6 +30,15 @@ jobs:
         with:
           python-version: "3.13"
 
+      # Both the patch-bump commit and the annotated tag need an identity.
+      # It lives here rather than inside the bump step because that step exits
+      # early on a deliberate version bump, which used to leave the tag step
+      # with no identity and fail the release.
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Read the version
         id: version
         run: |
@@ -61,8 +70,6 @@ jobs:
           sed -i -E "s/__version__ = \"[^\"]+\"/__version__ = \"$NEXT\"/" pzctl/__init__.py
           grep -n "__version__" pzctl/__init__.py
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add pzctl/__init__.py
           git commit -m "Bump version to $NEXT [skip ci]"
           git push origin HEAD:master
@@ -77,7 +84,10 @@ jobs:
 
       - name: Check panel JavaScript parses
         if: steps.check.outputs.release == 'go'
-        run: node --check pzctl/web/app.js
+        run: |
+          # Every panel script, not just app.js - a new file would
+          # otherwise ship unchecked.
+          for f in pzctl/web/*.js; do echo "checking $f"; node --check "$f"; done
 
       # Only the files a user drops into their server directory. Notably no
       # tests/, no .github/, and no pzctl.json - that one holds their secrets.

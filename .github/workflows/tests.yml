@@ -54,7 +54,10 @@ jobs:
       # the file is served as a static asset, so a broken one only shows up as a
       # blank panel in the browser. node is preinstalled on the runner.
       - name: Check panel JavaScript parses
-        run: node --check pzctl/web/app.js
+        run: |
+          # Every panel script, not just app.js - a new file would
+          # otherwise ship unchecked.
+          for f in pzctl/web/*.js; do echo "checking $f"; node --check "$f"; done
 
   docker:
     name: docker image
