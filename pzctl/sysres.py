@@ -213,7 +213,14 @@ def disk_usage(path) -> dict | None:
     server that has not saved its world yet would report no disk information at
     all, which is exactly when a full disk is most likely to go unnoticed.
     """
-    probe = Path(str(path)).resolve()
+    try:
+        # resolve() itself rejects some inputs - an embedded null raises
+        # ValueError before any filesystem call - so it is inside the guard
+        # rather than in front of it.
+        probe = Path(str(path)).resolve()
+    except (OSError, ValueError):
+        return None
+
     for candidate in (probe, *probe.parents):
         try:
             usage = shutil.disk_usage(str(candidate))

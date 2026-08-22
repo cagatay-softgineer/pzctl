@@ -88,8 +88,30 @@ class DiskTests(unittest.TestCase):
         self.assertFalse(missing.exists())
         self.assertIsNotNone(sysres.disk_usage(missing))
 
-    def test_unknown_volume_reports_nothing_rather_than_raising(self):
-        self.assertIsNone(sysres.disk_usage("Q:\\nope" if os.name == "nt" else "\0bad"))
+    def test_an_unknown_volume_reports_nothing(self):
+        """A path on a drive that does not exist has no volume to report."""
+        unknown = "Q:\\nope\\nope" if os.name == "nt" else "//nonexistent-host/share/x"
+        self.assertIsNone(sysres.disk_usage(unknown))
+
+    def test_no_input_makes_it_raise(self):
+        """The contract is that readers never raise, whatever they are handed.
+
+        Platforms disagree about what a malformed path even is: an embedded null
+        raises `ValueError` inside `resolve()` on Linux, while Windows resolves
+        it to a name under the working directory and reports that volume. Either
+        answer is acceptable; raising is not, because this runs on the status
+        path and would take the whole panel down with it.
+
+        `resolve()` is the subtle part - it can fail before any filesystem call,
+        so a guard wrapped only around the disk query does not catch it.
+        """
+        for path in ("\0bad", "", "   ", "\\\\?\\bogus", 12345, Path("relative/bits")):
+            with self.subTest(path=path):
+                try:
+                    result = sysres.disk_usage(path)
+                except Exception as exc:  # noqa: BLE001 - that is the assertion
+                    self.fail(f"disk_usage({path!r}) raised {exc!r}")
+                self.assertTrue(result is None or "total" in result)
 
 
 class RateTests(unittest.TestCase):
