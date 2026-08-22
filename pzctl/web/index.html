@@ -41,6 +41,24 @@
 <main>
   <!-- ── dashboard ─────────────────────────────────────────── -->
   <section class="panel on" id="tab-dashboard">
+    <div class="card res-card">
+      <div class="card-head">
+        <h2>Resources</h2>
+        <span class="res-legend">
+          <i class="k-proc"></i>server<i class="k-sys"></i>machine
+        </span>
+        <div class="res-windows" id="resWindows">
+          <button class="chip" data-window="300">5m</button>
+          <button class="chip on" data-window="1800">30m</button>
+          <button class="chip" data-window="3600">1h</button>
+          <button class="chip" data-window="7200">2h</button>
+        </div>
+      </div>
+      <div class="res-grid" id="resGrid"></div>
+      <p class="hint" id="resHint">Sampling every few seconds. History is kept in memory
+        and starts over when pzctl restarts.</p>
+    </div>
+
     <div class="grid-2">
       <div class="card console-card">
         <div class="card-head">
@@ -206,23 +224,6 @@
       </div>
     </div>
 
-    <div class="card res-card">
-      <div class="card-head">
-        <h2>Resources</h2>
-        <span class="res-legend">
-          <i class="k-proc"></i>server<i class="k-sys"></i>machine
-        </span>
-        <div class="res-windows" id="resWindows">
-          <button class="chip" data-window="300">5m</button>
-          <button class="chip on" data-window="1800">30m</button>
-          <button class="chip" data-window="3600">1h</button>
-          <button class="chip" data-window="7200">2h</button>
-        </div>
-      </div>
-      <div class="res-grid" id="resGrid"></div>
-      <p class="hint" id="resHint">Sampling every few seconds. History is kept in memory
-        and starts over when pzctl restarts.</p>
-    </div>
   </section>
 
   <!-- ── server ini ────────────────────────────────────────── -->
