@@ -16,6 +16,8 @@
     <div class="stat"><label>uptime</label><b id="statUptime">--</b></div>
     <div class="stat"><label>players</label><b id="statPlayers">--</b></div>
     <div class="stat"><label>memory</label><b id="statMem">--</b></div>
+    <div class="stat"><label>cpu</label><b id="statCpu">--</b></div>
+    <div class="stat"><label>disk free</label><b id="statDisk">--</b></div>
     <div class="stat"><label>rcon</label><b id="statRcon">--</b></div>
   </div>
   <div class="controls">
@@ -202,6 +204,24 @@
           <dl id="pathList" class="paths"></dl>
         </div>
       </div>
+    </div>
+
+    <div class="card res-card">
+      <div class="card-head">
+        <h2>Resources</h2>
+        <span class="res-legend">
+          <i class="k-proc"></i>server<i class="k-sys"></i>machine
+        </span>
+        <div class="res-windows" id="resWindows">
+          <button class="chip" data-window="300">5m</button>
+          <button class="chip on" data-window="1800">30m</button>
+          <button class="chip" data-window="3600">1h</button>
+          <button class="chip" data-window="7200">2h</button>
+        </div>
+      </div>
+      <div class="res-grid" id="resGrid"></div>
+      <p class="hint" id="resHint">Sampling every few seconds. History is kept in memory
+        and starts over when pzctl restarts.</p>
     </div>
   </section>
 
@@ -513,5 +533,6 @@
 
 <div id="toasts"></div>
 <script src="/app.js"></script>
+<script src="/sysres.js"></script>
 </body>
 </html>
