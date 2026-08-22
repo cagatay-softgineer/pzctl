@@ -23,6 +23,21 @@ Releases live on the [Releases page](https://github.com/cagatay-softgineer/pzctl
 
 ---
 
+## v1.3.0
+
+Resource monitoring.
+
+### Added
+
+- **Resource trends in the panel.** CPU, memory, disk and network are sampled every 5 seconds and charted on the dashboard, over a 5m/30m/1h/2h window, with a hover readout that scrubs the history rather than only reporting the latest value. CPU and memory are each plotted twice — the server process against the whole machine — because a server pinned at one core looks calm on a machine-wide graph, and a machine starved by something else looks calm on a process graph. New `GET /api/sysres`; the header gains CPU and disk-free tiles. All standard library: `GetProcessTimes`/`GetSystemTimes` and `GetIfTable` on Windows, `/proc` on Linux, `shutil.disk_usage` everywhere.
+- A `tests/test_web_assets.py` guard that catches JavaScript string literals broken across a line break without needing node, so it runs everywhere the Python suite does rather than only in the one CI job that has node.
+
+### Fixed
+
+- Disk space is reported for the volume even when the save directory does not exist yet, by walking up to the nearest existing parent. Without it a server that has not yet saved a world reported no disk figure at all — exactly when a filling disk is most likely to go unnoticed.
+
+---
+
 ## v1.2.0
 
 Server administration and maintenance.

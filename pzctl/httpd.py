@@ -35,6 +35,7 @@ from . import (
     rcon,
     sandbox,
     serverupdate,
+    sysres,
     tunnel,
     updates,
     upgrade,
@@ -47,10 +48,13 @@ LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 
 
 class Context:
-    def __init__(self, cfg: Config, supervisor, scheduler):
+    def __init__(self, cfg: Config, supervisor, scheduler, sampler=None):
         self.cfg = cfg
         self.sup = supervisor
         self.sched = scheduler
+        # Optional so tests and embedders can build a Context without
+        # starting a sampling thread.
+        self.sampler = sampler
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -160,6 +164,24 @@ class Handler(BaseHTTPRequestHandler):
         status["version"] = __version__
         status["ok"] = True
         self._json(status)
+
+    def api_sysres(self, params):
+        if self.ctx.sampler is None:
+            self._json({"ok": False, "error": "resource sampling is not running"})
+            return
+        try:
+            window = int((params.get("window") or ["3600"])[0])
+        except ValueError:
+            window = 3600
+        try:
+            points = int((params.get("points") or ["180"])[0])
+        except ValueError:
+            points = 180
+        # Clamped so a hand-written request cannot ask for a response large
+        # enough to matter on a machine that is already short of resources.
+        window = max(60, min(window, 7200))
+        points = max(10, min(points, 600))
+        self._json(self.ctx.sampler.snapshot(window, points))
 
     def api_console(self, params):
         limit = int((params.get("limit") or ["400"])[0])
@@ -576,6 +598,7 @@ class Handler(BaseHTTPRequestHandler):
 
 ROUTES = {
     ("GET", "/api/status"): Handler.api_status,
+    ("GET", "/api/sysres"): Handler.api_sysres,
     ("GET", "/api/console"): Handler.api_console,
     ("GET", "/api/console/stream"): Handler.api_console_stream,
     ("POST", "/api/server/start"): Handler.api_start,

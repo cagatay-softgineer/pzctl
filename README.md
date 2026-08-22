@@ -74,6 +74,9 @@ Ctrl+C shuts the daemon down and stops the game server cleanly first.
   minute marks you choose.
 - **Scheduled backups** — issues `save`, then zips the world save (plus the INI
   and SandboxVars) into `%USERPROFILE%\Zomboid\Backups`, keeping the newest N.
+- **Resource trends** — samples CPU, memory, disk and network every few seconds
+  and charts them in the panel, for the server process and for the machine side
+  by side. History lives in memory and starts over when pzctl restarts.
 
 ## Config editing
 

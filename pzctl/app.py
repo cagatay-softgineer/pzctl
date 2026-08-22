@@ -12,6 +12,7 @@ import webbrowser
 from . import __version__, httpd
 from .config import DATA_DIR, LOG_DIR, Config
 from .scheduler import Scheduler
+from .sysres import Sampler
 from .supervisor import Supervisor
 
 
@@ -37,7 +38,8 @@ def main(argv: list[str] | None = None) -> int:
 
     sup = Supervisor(cfg)
     sched = Scheduler(cfg, sup)
-    ctx = httpd.Context(cfg, sup, sched)
+    sampler = Sampler(cfg, sup)
+    ctx = httpd.Context(cfg, sup, sched, sampler)
 
     try:
         server = httpd.serve(ctx)
@@ -68,6 +70,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.no_schedule:
         sched.start()
+    sampler.start()
 
     threading.Thread(target=server.serve_forever, name="pz-http", daemon=True).start()
 
@@ -104,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print("\nshutting down...")
     sched.stop()
+    sampler.stop()
     server.shutdown()
     sup.shutdown()
     time.sleep(0.3)
