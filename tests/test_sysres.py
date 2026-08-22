@@ -88,10 +88,15 @@ class DiskTests(unittest.TestCase):
         self.assertFalse(missing.exists())
         self.assertIsNotNone(sysres.disk_usage(missing))
 
-    def test_an_unknown_volume_reports_nothing(self):
-        """A path on a drive that does not exist has no volume to report."""
-        unknown = "Q:\\nope\\nope" if os.name == "nt" else "//nonexistent-host/share/x"
-        self.assertIsNone(sysres.disk_usage(unknown))
+    @unittest.skipUnless(
+        os.name == "nt",
+        "Only Windows has a volume that can be missing. On POSIX the walk up to "
+        "the nearest existing parent always terminates at '/', which is always "
+        "mounted, so there is no unknown-volume case to test.",
+    )
+    def test_an_unknown_drive_reports_nothing(self):
+        """A path on a drive letter that is not mounted has no volume."""
+        self.assertIsNone(sysres.disk_usage("Q:\\nope\\nope"))
 
     def test_no_input_makes_it_raise(self):
         """The contract is that readers never raise, whatever they are handed.
